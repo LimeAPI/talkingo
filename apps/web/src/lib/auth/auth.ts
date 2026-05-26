@@ -123,11 +123,37 @@ export async function updateAccountPrefs(payload: AccountPrefsPayload): Promise<
 
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
 
-export function signInWithGoogle(): void {
+export function signInWithGoogle(redirect?: string): void {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  // Pass redirect through as the success URL so deep links are preserved
+  const successUrl = redirect && redirect !== '/'
+    ? `${origin}${redirect}`
+    : `${origin}/`
   account.createOAuth2Session(
     OAuthProvider.Google,
-    `${origin}/`,          // success — back to app
+    successUrl,            // success — back to intended page
     `${origin}/login`,     // failure — back to login
   )
+}
+
+// ─── Password Recovery ────────────────────────────────────────────────────────
+
+/**
+ * Send a password recovery email. Appwrite sends a link to the user's email
+ * that redirects to the recovery URL with userId and secret params.
+ */
+export async function sendPasswordRecovery(email: string): Promise<void> {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  await account.createRecovery(email, `${origin}/reset-password`)
+}
+
+/**
+ * Complete password recovery using the userId and secret from the recovery link.
+ */
+export async function completePasswordRecovery(
+  userId: string,
+  secret: string,
+  newPassword: string
+): Promise<void> {
+  await account.updateRecovery(userId, secret, newPassword)
 }

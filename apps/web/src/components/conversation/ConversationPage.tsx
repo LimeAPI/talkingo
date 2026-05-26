@@ -174,11 +174,19 @@ export function ConversationPage() {
 
   // Subscription / paywall
   const [showedPaywall, setShowedPaywall] = useState(false)
-  const [isSubscribedCheck, setIsSubscribedCheck] = useState(() => isSubscribed(user?.id))
+  // Initialize as false — will be set correctly once user loads (avoids reading wrong localStorage key)
+  const [isSubscribedCheck, setIsSubscribedCheck] = useState(false)
 
   // Upgrade prompt (shown when free users hit a limit)
   const [upgradeReason, setUpgradeReason] = useState<UpgradeReason | null>(null)
-  const [remainingMessages, setRemainingMessages] = useState(() => getRemainingMessages(user?.id))
+  const [remainingMessages, setRemainingMessages] = useState<number>(FREE_TIER.DAILY_MESSAGES)
+
+  // Sync subscription state once user is loaded
+  useEffect(() => {
+    if (!user?.id) return
+    setIsSubscribedCheck(isSubscribed(user.id))
+    setRemainingMessages(getRemainingMessages(user.id))
+  }, [user?.id])
 
   // Check for successful payment return from Stripe
   useEffect(() => {
@@ -205,11 +213,17 @@ export function ConversationPage() {
               customerId: data.customerId,
             }, user?.id)
           }
-        }).catch(() => {})
+        }).catch((err) => {
+          // Non-critical: subscription is already active, just missing customerId for portal
+          console.warn('[Payment] Could not fetch session details:', err)
+        })
       }
 
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname)
+      // Clean URL (preserve non-subscription params like UTM)
+      const url = new URL(window.location.href)
+      url.searchParams.delete('subscription')
+      url.searchParams.delete('session_id')
+      window.history.replaceState({}, '', url.pathname + url.search)
     }
   }, [user?.id])
 

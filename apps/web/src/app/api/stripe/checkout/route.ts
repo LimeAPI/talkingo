@@ -42,10 +42,6 @@ export async function POST(req: NextRequest) {
     // Use the authenticated userId, not the one from the request body (prevents manipulation)
     const safeUserId = authenticatedUserId
 
-    if (!plan || !['monthly', 'yearly'].includes(plan)) {
-      return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
-    }
-
     const priceId = plan === 'yearly' ? PRICES.yearly : PRICES.monthly
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 

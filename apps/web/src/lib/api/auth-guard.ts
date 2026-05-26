@@ -49,8 +49,11 @@ export async function verifyAuth(req: NextRequest): Promise<string | null> {
 
 /**
  * Simple rate limiter using in-memory store.
- * Resets every window (default 60s). Not distributed — works per-instance.
- * For production, use Redis or a proper rate limiter.
+ * Resets every window (default 60s). Not distributed — works per-instance only.
+ *
+ * NOTE: In serverless environments (Vercel), this provides best-effort
+ * per-instance limiting. For true distributed rate limiting, use Redis.
+ * Still useful as a safety net against burst abuse within a single instance.
  */
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
 
@@ -59,6 +62,7 @@ export function checkRateLimit(
   maxRequests: number = 30,
   windowMs: number = 60_000
 ): { allowed: boolean; remaining: number } {
+  pruneExpiredEntries()
   const now = Date.now()
   const entry = rateLimitStore.get(key)
 
@@ -75,12 +79,15 @@ export function checkRateLimit(
   return { allowed: true, remaining: maxRequests - entry.count }
 }
 
-// Clean up expired entries every 5 minutes
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now()
-    for (const [key, entry] of rateLimitStore) {
-      if (now > entry.resetAt) rateLimitStore.delete(key)
-    }
-  }, 5 * 60_000)
+/**
+ * Lazy cleanup: prune expired entries when the store grows large.
+ * Avoids setInterval in serverless (timers don't persist across invocations).
+ * Called automatically inside checkRateLimit when store exceeds threshold.
+ */
+function pruneExpiredEntries() {
+  if (rateLimitStore.size < 100) return
+  const now = Date.now()
+  for (const [key, entry] of rateLimitStore) {
+    if (now > entry.resetAt) rateLimitStore.delete(key)
+  }
 }

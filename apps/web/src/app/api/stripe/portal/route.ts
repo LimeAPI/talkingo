@@ -4,6 +4,9 @@ import Stripe from 'stripe'
 /**
  * Creates a Stripe Customer Portal session.
  * User can manage their subscription (cancel, upgrade, update payment method).
+ *
+ * Security: verifies the customerId belongs to the authenticated user
+ * by checking the subscriptions collection in Appwrite.
  */
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -23,6 +26,13 @@ export async function POST(req: NextRequest) {
     const userId = await verifyAuth(req)
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // ── Ownership check: verify this customerId belongs to the user ─────
+    const { getSubscription } = await import('@/lib/appwrite-server')
+    const subscription = await getSubscription(userId)
+    if (!subscription || subscription.stripeCustomerId !== customerId) {
+      return NextResponse.json({ error: 'Forbidden — customer mismatch' }, { status: 403 })
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'

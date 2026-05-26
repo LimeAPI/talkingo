@@ -135,6 +135,28 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // ── Free tier enforcement (server-side) ──────────────────────────────
+    // Only enforce on conversation messages (not onboarding, assessment, etc.)
+    if (type === 'message') {
+      const { getSubscription } = await import('@/lib/appwrite-server')
+      const subscription = await getSubscription(userId)
+      const isActive = subscription?.status === 'active' || subscription?.status === 'trialing'
+
+      if (!isActive) {
+        // Check daily message count (server-side, per-user, stored in rate limit store)
+        const FREE_DAILY_LIMIT = 6
+        const dayKey = new Date().toISOString().split('T')[0]
+        const usageKey = `free:${userId}:${dayKey}`
+        const { allowed: withinLimit } = checkRateLimit(usageKey, FREE_DAILY_LIMIT, 24 * 60 * 60_000)
+        if (!withinLimit) {
+          return NextResponse.json(
+            { error: 'free_limit_reached', message: 'Daily message limit reached. Upgrade for unlimited conversations.' },
+            { status: 429 }
+          )
+        }
+      }
+    }
+
     try {
       // ── Onboarding: single turn of the natural conversation ──
       if (type === 'onboarding-turn') {

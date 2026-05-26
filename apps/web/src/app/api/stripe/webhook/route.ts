@@ -51,6 +51,10 @@ export async function POST(req: NextRequest) {
 
         console.log(`[webhook] Checkout completed — user: ${userId}, customer: ${customerId}`)
 
+        if (!userId) {
+          console.warn(`[webhook] ⚠️ checkout.session.completed missing metadata.userId — subscription won't sync. Customer: ${customerId}`)
+        }
+
         if (userId) {
           // Write to subscriptions collection (source of truth)
           await upsertSubscription(userId, {
@@ -82,6 +86,10 @@ export async function POST(req: NextRequest) {
         const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
 
         console.log(`[webhook] Subscription updated — user: ${userId}, status: ${status}`)
+
+        if (!userId) {
+          console.warn(`[webhook] ⚠️ subscription.updated missing metadata.userId — status won't sync. Customer: ${customerId}`)
+        }
 
         if (userId) {
           await upsertSubscription(userId, {
@@ -117,6 +125,10 @@ export async function POST(req: NextRequest) {
         const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
 
         console.log(`[webhook] Subscription cancelled — user: ${userId}`)
+
+        if (!userId) {
+          console.warn(`[webhook] ⚠️ subscription.deleted missing metadata.userId — expiry won't sync. Customer: ${customerId}`)
+        }
 
         if (userId) {
           await upsertSubscription(userId, {

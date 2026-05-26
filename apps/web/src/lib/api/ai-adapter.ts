@@ -7,6 +7,9 @@
 
 export type AIProvider = 'google' | 'openrouter' | 'openai'
 
+/** Default timeout for AI API calls (30 seconds) */
+const AI_TIMEOUT_MS = 30_000
+
 interface ChatMessage {
   role: 'user' | 'model' | 'assistant' | 'system'
   parts?: Array<{ text: string }> // Google format
@@ -21,6 +24,8 @@ interface AIRequest {
   maxTokens?: number
   /** Set to 'text' for plain text responses (e.g., onboarding conversation). Defaults to 'json'. */
   responseFormat?: 'json' | 'text'
+  /** Timeout in ms. Defaults to 30s. */
+  timeoutMs?: number
 }
 
 export async function callAIProvider(request: AIRequest): Promise<string> {
@@ -62,19 +67,28 @@ async function callGoogleDirect(request: AIRequest, apiKey: string): Promise<str
     body.systemInstruction = { parts: [{ text: request.systemInstruction }] }
   }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  // Abort if the request takes too long
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), request.timeoutMs ?? AI_TIMEOUT_MS)
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Google AI Error ${res.status}: ${err}`)
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`Google AI Error ${res.status}: ${err}`)
+    }
+
+    const data = await res.json()
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  } finally {
+    clearTimeout(timeout)
   }
-
-  const data = await res.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 }
 
 async function callOpenAICompatible(request: AIRequest, apiKey: string, provider: AIProvider): Promise<string> {
@@ -105,23 +119,32 @@ async function callOpenAICompatible(request: AIRequest, apiKey: string, provider
     headers['X-Title'] = 'Talkingo'
   }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model: request.model,
-      messages,
-      temperature: request.temperature ?? 0.85,
-      max_tokens: request.maxTokens ?? 2048,
-      ...(request.responseFormat !== 'text' ? { response_format: { type: "json_object" } } : {}),
-    }),
-  })
+  // Abort if the request takes too long
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), request.timeoutMs ?? AI_TIMEOUT_MS)
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`${provider} Error ${res.status}: ${err}`)
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: request.model,
+        messages,
+        temperature: request.temperature ?? 0.85,
+        max_tokens: request.maxTokens ?? 2048,
+        ...(request.responseFormat !== 'text' ? { response_format: { type: "json_object" } } : {}),
+      }),
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`${provider} Error ${res.status}: ${err}`)
+    }
+
+    const data = await res.json()
+    return data.choices?.[0]?.message?.content || ''
+  } finally {
+    clearTimeout(timeout)
   }
-
-  const data = await res.json()
-  return data.choices?.[0]?.message?.content || ''
 }

@@ -46,7 +46,7 @@ function LoginForm() {
 
   const handleGoogle = () => {
     setGoogleLoading(true)
-    signInWithGoogle()
+    signInWithGoogle(redirect)
   }
 
   return (
@@ -126,6 +126,11 @@ function LoginForm() {
                 >
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
+              </div>
+              <div className="text-right">
+                <Link href="/forgot-password" className="text-[11px] text-primary hover:underline">
+                  Forgot password?
+                </Link>
               </div>
             </div>
 
