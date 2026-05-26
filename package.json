@@ -1,0 +1,18 @@
+{
+  "name": "talkingo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@talkingo/web",
+    "dev:admin": "npm run dev --workspace=@talkingo/admin",
+    "build": "npm run build --workspace=@talkingo/web",
+    "build:admin": "npm run build --workspace=@talkingo/admin",
+    "start": "npm run start --workspace=@talkingo/web"
+  },
+  "dependencies": {
+    "node-appwrite": "^24.1.0"
+  }
+}

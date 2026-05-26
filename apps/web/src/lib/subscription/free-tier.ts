@@ -1,0 +1,113 @@
+/**
+ * Free Tier Configuration & Usage Tracking
+ *
+ * Free users get a taste of the app — enough to feel the magic,
+ * not enough to learn seriously. The goal: demonstrate value, then convert.
+ *
+ * Gated features:
+ * - Messages: 6/day (resets at midnight local time)
+ * - Personas: Eli + Alex only (4 locked)
+ * - Levels: 1-4 only (8 locked)
+ * - Modes: Chat only (handsfree + live call locked)
+ * - Voice recording: Locked (can listen to AI voice notes, can't record)
+ * - History: Last 3 sessions only
+ * - Session recap: Basic (encouragement + corrections only, no vocab/native-would-say)
+ * - Phrase bank: Locked
+ *
+ * Free features (to hook them):
+ * - Corrections (inline) ✅
+ * - Teaching cards (corrections only) ✅
+ * - AI voice notes (listen) ✅
+ * - Onboarding assessment ✅
+ * - 2 personas ✅
+ * - Levels 1-4 ✅
+ */
+
+// ─── Limits ──────────────────────────────────────────────────────────────────
+
+export const FREE_TIER = {
+  /** Max user messages per day */
+  DAILY_MESSAGES: 6,
+  /** Allowed personas (IDs) */
+  ALLOWED_PERSONAS: ['eli', 'alex'] as string[],
+  /** Max level accessible */
+  MAX_LEVEL: 4,
+  /** Allowed interaction modes */
+  ALLOWED_MODES: ['manual'] as string[],
+  /** Max sessions visible in history */
+  MAX_HISTORY_SESSIONS: 3,
+  /** Whether voice recording (user → AI) is allowed */
+  VOICE_RECORDING: true,
+  /** Whether phrase bank is accessible */
+  PHRASE_BANK: false,
+  /** Whether full recap is shown (vocab, native-would-say, planted phrase) */
+  FULL_RECAP: false,
+} as const
+
+// ─── Usage Tracking (localStorage) ──────────────────────────────────────────
+
+const USAGE_KEY = 'talkingo_free_usage'
+
+interface DailyUsage {
+  date: string // YYYY-MM-DD
+  messageCount: number
+}
+
+function getTodayKey(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+function getUsageKey(userId?: string | null): string {
+  return userId ? `${USAGE_KEY}_${userId}` : USAGE_KEY
+}
+
+export function getDailyUsage(userId?: string | null): DailyUsage {
+  if (typeof window === 'undefined') return { date: getTodayKey(), messageCount: 0 }
+  try {
+    const stored = localStorage.getItem(getUsageKey(userId))
+    if (!stored) return { date: getTodayKey(), messageCount: 0 }
+    const usage: DailyUsage = JSON.parse(stored)
+    // Reset if it's a new day
+    if (usage.date !== getTodayKey()) {
+      return { date: getTodayKey(), messageCount: 0 }
+    }
+    return usage
+  } catch {
+    return { date: getTodayKey(), messageCount: 0 }
+  }
+}
+
+export function incrementMessageCount(userId?: string | null): DailyUsage {
+  const usage = getDailyUsage(userId)
+  const updated: DailyUsage = {
+    date: getTodayKey(),
+    messageCount: usage.messageCount + 1,
+  }
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(getUsageKey(userId), JSON.stringify(updated))
+  }
+  return updated
+}
+
+export function getRemainingMessages(userId?: string | null): number {
+  const usage = getDailyUsage(userId)
+  return Math.max(0, FREE_TIER.DAILY_MESSAGES - usage.messageCount)
+}
+
+export function hasReachedDailyLimit(userId?: string | null): boolean {
+  return getRemainingMessages(userId) <= 0
+}
+
+// ─── Feature Checks ─────────────────────────────────────────────────────────
+
+export function isPersonaAllowed(personaId: string): boolean {
+  return FREE_TIER.ALLOWED_PERSONAS.includes(personaId)
+}
+
+export function isModeAllowed(mode: string): boolean {
+  return FREE_TIER.ALLOWED_MODES.includes(mode)
+}
+
+export function isLevelAllowed(level: number): boolean {
+  return level <= FREE_TIER.MAX_LEVEL
+}
