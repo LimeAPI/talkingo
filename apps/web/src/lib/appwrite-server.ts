@@ -30,10 +30,12 @@ const ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT
 const PROJECT_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID
 const API_KEY = process.env.APPWRITE_API_KEY
 
-if (!ENDPOINT || !PROJECT_ID) {
-  throw new Error(
-    '[appwrite-server] NEXT_PUBLIC_APPWRITE_ENDPOINT and NEXT_PUBLIC_APPWRITE_PROJECT_ID are required.'
-  )
+function requireBaseEnv() {
+  if (!ENDPOINT || !PROJECT_ID) {
+    throw new Error(
+      '[appwrite-server] NEXT_PUBLIC_APPWRITE_ENDPOINT and NEXT_PUBLIC_APPWRITE_PROJECT_ID are required.'
+    )
+  }
 }
 
 // ─── Admin client (lazily-instantiated so missing API key only errors if used) ──
@@ -44,6 +46,7 @@ let _adminUsers: Users | null = null
 
 function ensureAdmin() {
   if (_adminDatabases && _adminUsers) return
+  requireBaseEnv()
   if (!API_KEY) {
     throw new Error(
       '[appwrite-server] APPWRITE_API_KEY is required for admin-context operations ' +
@@ -94,6 +97,8 @@ export function getUserDatabases(jwtOrReq: string | NextRequest): Databases {
   if (!jwt) {
     throw new Error('[appwrite-server] getUserDatabases called without a JWT')
   }
+
+  requireBaseEnv()
 
   const client = new Client()
     .setEndpoint(ENDPOINT!)
