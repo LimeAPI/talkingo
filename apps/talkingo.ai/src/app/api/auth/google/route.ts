@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { sanitizeRedirectPath } from '@talkingo/shared/utils'
+import { getCallbackUrl } from '@/lib/public-url'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const callbackUrl = `${req.nextUrl.origin}/api/auth/google/callback`
+  const callbackUrl = getCallbackUrl(req, '/api/auth/google/callback')
   const nonce = randomBytes(16).toString('hex')
   const state = Buffer.from(JSON.stringify({ redirect, nonce })).toString('base64url')
 

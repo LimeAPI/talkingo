@@ -2,21 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUsers } from '@/lib/appwrite-server'
 import { Query } from 'node-appwrite'
 import { sanitizeRedirectPath } from '@talkingo/shared/utils'
+import { getPublicBaseUrl, getCallbackUrl } from '@/lib/public-url'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  const baseUrl = getPublicBaseUrl(req)
   const code = req.nextUrl.searchParams.get('code')
   const stateParam = req.nextUrl.searchParams.get('state')
   const error = req.nextUrl.searchParams.get('error')
 
   if (error) {
-    return NextResponse.redirect(new URL('/login?error=google_denied', req.url))
+    return NextResponse.redirect(new URL('/login?error=google_denied', baseUrl))
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL('/login?error=oauth_no_code', req.url))
+    return NextResponse.redirect(new URL('/login?error=oauth_no_code', baseUrl))
   }
 
   const cookieNonce = req.cookies.get('talkingo_oauth_nonce')?.value
@@ -27,18 +29,18 @@ export async function GET(req: NextRequest) {
       const parsed = JSON.parse(Buffer.from(stateParam, 'base64url').toString())
       const stateNonce = typeof parsed?.nonce === 'string' ? parsed.nonce : null
       if (!cookieNonce || !stateNonce || cookieNonce !== stateNonce) {
-        const bad = NextResponse.redirect(new URL('/login?error=oauth_state', req.url))
+        const bad = NextResponse.redirect(new URL('/login?error=oauth_state', baseUrl))
         bad.cookies.set('talkingo_oauth_nonce', '', { maxAge: 0, path: '/' })
         return bad
       }
       redirect = sanitizeRedirectPath(parsed.redirect, '/')
     } catch {
-      const bad = NextResponse.redirect(new URL('/login?error=oauth_state', req.url))
+      const bad = NextResponse.redirect(new URL('/login?error=oauth_state', baseUrl))
       bad.cookies.set('talkingo_oauth_nonce', '', { maxAge: 0, path: '/' })
       return bad
     }
   } else if (cookieNonce) {
-    const bad = NextResponse.redirect(new URL('/login?error=oauth_state', req.url))
+    const bad = NextResponse.redirect(new URL('/login?error=oauth_state', baseUrl))
     bad.cookies.set('talkingo_oauth_nonce', '', { maxAge: 0, path: '/' })
     return bad
   }
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(new URL('/login?error=oauth_not_configured', req.url))
+    return NextResponse.redirect(new URL('/login?error=oauth_not_configured', baseUrl))
   }
 
   try {
@@ -58,7 +60,7 @@ export async function GET(req: NextRequest) {
         code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: `${req.nextUrl.origin}/api/auth/google/callback`,
+        redirect_uri: getCallbackUrl(req, '/api/auth/google/callback'),
         grant_type: 'authorization_code',
       }).toString(),
     })
@@ -123,7 +125,7 @@ export async function GET(req: NextRequest) {
       jwt = jwtResult.jwt || jwtResult.secret
     }
 
-    const response = NextResponse.redirect(new URL(redirect, req.url))
+    const response = NextResponse.redirect(new URL(redirect, baseUrl))
     response.cookies.set('talkingo_oauth_nonce', '', { maxAge: 0, path: '/' })
     response.cookies.set('appwrite-jwt', jwt, {
       httpOnly: false,
@@ -136,6 +138,6 @@ export async function GET(req: NextRequest) {
     return response
   } catch (err: any) {
     console.error('[google-callback] Error:', err.message)
-    return NextResponse.redirect(new URL('/login?error=oauth_failed', req.url))
+    return NextResponse.redirect(new URL('/login?error=oauth_failed', baseUrl))
   }
 }
