@@ -36,6 +36,17 @@ function getCachedJWT(): string | null {
   }
 }
 
+function getCookieJWT(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)appwrite-jwt=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function clearCookieJWT(): void {
+  if (typeof document === 'undefined') return
+  document.cookie = 'appwrite-jwt=; path=/; max-age=0; samesite=lax'
+}
+
 function setCachedJWT(token: string): void {
   if (typeof window === 'undefined') return
   try {
@@ -50,6 +61,7 @@ export function clearCachedJWT(): void {
   if (typeof window === 'undefined') return
   try {
     window.sessionStorage.removeItem(JWT_STORAGE_KEY)
+    clearCookieJWT()
   } catch {
     /* ignore */
   }
@@ -60,11 +72,17 @@ export function clearCachedJWT(): void {
  * Returns null if not logged in. Caches the JWT to avoid creating one per request.
  * Coalesces concurrent calls so we only ever have one createJWT in flight.
  */
-async function getJWT(): Promise<string | null> {
+export async function getAuthJWT(): Promise<string | null> {
   if (typeof window === 'undefined') return null
 
   const cached = getCachedJWT()
   if (cached) return cached
+
+  const cookieJwt = getCookieJWT()
+  if (cookieJwt) {
+    setCachedJWT(cookieJwt)
+    return cookieJwt
+  }
 
   if (inFlightJwtPromise) return inFlightJwtPromise
 
@@ -88,7 +106,7 @@ async function getJWT(): Promise<string | null> {
  * Appwrite JWT for authentication with our API routes.
  */
 export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const jwt = await getJWT()
+  const jwt = await getAuthJWT()
   const headers = new Headers(init?.headers)
 
   if (jwt) {
@@ -100,7 +118,7 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
   // If the JWT was rejected (e.g., expired), clear cache and retry once
   if (res.status === 401 && jwt) {
     clearCachedJWT()
-    const freshJwt = await getJWT()
+    const freshJwt = await getAuthJWT()
     if (freshJwt && freshJwt !== jwt) {
       const retryHeaders = new Headers(init?.headers)
       retryHeaders.set('X-Appwrite-JWT', freshJwt)
@@ -131,7 +149,7 @@ export function installAuthFetchInterceptor(): void {
       return originalFetch(input, init)
     }
 
-    const jwt = await getJWT()
+    const jwt = await getAuthJWT()
     const headers = new Headers(init?.headers)
     if (jwt && !headers.has('X-Appwrite-JWT')) {
       headers.set('X-Appwrite-JWT', jwt)
@@ -142,7 +160,7 @@ export function installAuthFetchInterceptor(): void {
     // Auto-retry once on 401 with a fresh JWT (handles expired tokens)
     if (res.status === 401 && jwt) {
       clearCachedJWT()
-      const freshJwt = await getJWT()
+      const freshJwt = await getAuthJWT()
       if (freshJwt && freshJwt !== jwt) {
         const retryHeaders = new Headers(init?.headers)
         retryHeaders.set('X-Appwrite-JWT', freshJwt)

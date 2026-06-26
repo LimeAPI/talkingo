@@ -10,6 +10,7 @@
  */
 
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts'
+import type { DialectVariant } from '@/shared/types'
 
 // ─── Voice mapping per language ───────────────────────────────────────────────
 // Maps BCP-47 language codes to Edge TTS voice names.
@@ -21,7 +22,7 @@ interface VoiceConfig {
   fallback: string
 }
 
-const VOICE_MAP: Record<string, VoiceConfig> = {
+export const VOICE_MAP: Record<string, VoiceConfig> = {
   // European languages
   'en-US': { primary: 'en-US-AvaMultilingualNeural', fallback: 'en-US-AndrewMultilingualNeural' },
   'en-GB': { primary: 'en-GB-SoniaNeural', fallback: 'en-GB-RyanNeural' },
@@ -53,12 +54,19 @@ const VOICE_MAP: Record<string, VoiceConfig> = {
   'id-ID': { primary: 'id-ID-GadisNeural', fallback: 'id-ID-ArdiNeural' },
   'ms-MY': { primary: 'ms-MY-YasminNeural', fallback: 'ms-MY-OsmanNeural' },
   'hi-IN': { primary: 'hi-IN-SwaraNeural', fallback: 'hi-IN-MadhurNeural' },
+  'pa-IN': { primary: 'pa-IN-GurpreetNeural', fallback: 'pa-IN-OjaasNeural' },
+  'fil-PH': { primary: 'fil-PH-BlessicaNeural', fallback: 'fil-PH-AngeloNeural' },
   // Middle Eastern / African
   'ar-SA': { primary: 'ar-SA-ZariyahNeural', fallback: 'ar-SA-HamedNeural' },
   'ar-EG': { primary: 'ar-EG-SalmaNeural', fallback: 'ar-EG-ShakirNeural' },
+  'ar-LB': { primary: 'ar-LB-LaylaNeural', fallback: 'ar-LB-RamiNeural' },
   'tr-TR': { primary: 'tr-TR-EmelNeural', fallback: 'tr-TR-AhmetNeural' },
   'he-IL': { primary: 'he-IL-HilaNeural', fallback: 'he-IL-AvriNeural' },
   'fa-IR': { primary: 'fa-IR-DilaraNeural', fallback: 'fa-IR-FaridNeural' },
+  'ur-PK': { primary: 'ur-PK-UzmaNeural', fallback: 'ur-PK-AsadNeural' },
+  'sw-TZ': { primary: 'sw-TZ-RehemaNeural', fallback: 'sw-TZ-DaudiNeural' },
+  // Spanish dialect
+  'es-MX': { primary: 'es-MX-DaliaNeural', fallback: 'es-MX-JorgeNeural' },
 }
 
 // Persona-to-gender mapping for voice selection
@@ -73,15 +81,21 @@ const PERSONA_GENDER: Record<string, 'female' | 'male'> = {
 
 /**
  * Get the best Edge TTS voice for a given language and persona.
+ * When a dialect is specified, resolves to the dialect-specific BCP-47 voice.
+ * If the dialect has no voice map entry, falls back to the language's default voice.
  */
-function getEdgeVoice(languageCode: string, personaId?: string): string {
-  // Normalize language code (e.g., 'fr' → 'fr-FR', 'en' → 'en-US')
-  const normalized = normalizeLanguageCode(languageCode)
+export function getEdgeVoice(languageCode: string, personaId?: string, dialect?: DialectVariant): string {
+  // If dialect is specified, prefer dialect BCP-47 code
+  const effectiveCode = dialect ?? normalizeLanguageCode(languageCode)
+  const normalized = effectiveCode.includes('-') && effectiveCode.length >= 5
+    ? effectiveCode
+    : normalizeLanguageCode(effectiveCode)
   const config = VOICE_MAP[normalized]
 
   if (!config) {
-    // Fallback to English if language not mapped
-    return VOICE_MAP['en-US'].primary
+    // Fallback to language default, then English
+    const langFallback = normalizeLanguageCode(languageCode)
+    return VOICE_MAP[langFallback]?.primary ?? VOICE_MAP['en-US'].primary
   }
 
   // Pick voice based on persona gender
@@ -90,30 +104,40 @@ function getEdgeVoice(languageCode: string, personaId?: string): string {
   return config.primary // primary voices are female
 }
 
-function normalizeLanguageCode(code: string): string {
+// Short code → BCP-47 mapping for language normalization
+export const SHORT_MAP: Record<string, string> = {
+  en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT',
+  pt: 'pt-BR', nl: 'nl-NL', pl: 'pl-PL', ru: 'ru-RU', uk: 'uk-UA',
+  sv: 'sv-SE', da: 'da-DK', nb: 'nb-NO', fi: 'fi-FI', el: 'el-GR',
+  cs: 'cs-CZ', ro: 'ro-RO', hu: 'hu-HU', ja: 'ja-JP', ko: 'ko-KR',
+  zh: 'zh-CN', th: 'th-TH', vi: 'vi-VN', id: 'id-ID', ms: 'ms-MY',
+  hi: 'hi-IN', ar: 'ar-SA', tr: 'tr-TR', he: 'he-IL', fa: 'fa-IR',
+  ur: 'ur-PK', sw: 'sw-TZ', pa: 'pa-IN', tl: 'fil-PH', fil: 'fil-PH',
+}
+
+export function normalizeLanguageCode(code: string): string {
   if (!code) return 'en-US'
   // Already full BCP-47
   if (code.includes('-') && code.length >= 5) return code
   // Short code → full
-  const SHORT_MAP: Record<string, string> = {
-    en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT',
-    pt: 'pt-BR', nl: 'nl-NL', pl: 'pl-PL', ru: 'ru-RU', uk: 'uk-UA',
-    sv: 'sv-SE', da: 'da-DK', nb: 'nb-NO', fi: 'fi-FI', el: 'el-GR',
-    cs: 'cs-CZ', ro: 'ro-RO', hu: 'hu-HU', ja: 'ja-JP', ko: 'ko-KR',
-    zh: 'zh-CN', th: 'th-TH', vi: 'vi-VN', id: 'id-ID', ms: 'ms-MY',
-    hi: 'hi-IN', ar: 'ar-SA', tr: 'tr-TR', he: 'he-IL', fa: 'fa-IR',
-  }
   return SHORT_MAP[code.split('-')[0]] || 'en-US'
 }
 
 /**
  * Synthesize speech using Edge TTS.
  * Returns base64-encoded audio data (MP3 format) or null on failure.
+ *
+ * If synthesis fails for the requested language (voice not found, timeout >10s,
+ * or empty audio response), the service falls back to en-US primary voice once
+ * before returning null.
  */
 export async function synthesizeWithEdgeTTS(
   text: string,
-  options?: { languageCode?: string; personaId?: string; voiceName?: string }
+  options?: { languageCode?: string; personaId?: string; voiceName?: string },
+  _isFallback?: boolean
 ): Promise<{ audioBase64: string; format: 'mp3' } | null> {
+  const requestedLanguage = options?.languageCode || 'en-US'
+
   try {
     let voice: string
 
@@ -145,15 +169,35 @@ export async function synthesizeWithEdgeTTS(
       setTimeout(() => reject(new Error('Edge TTS timeout')), 10000)
     })
 
-    if (chunks.length === 0) return null
+    if (chunks.length === 0) {
+      // Empty audio response — attempt fallback to en-US if not already falling back
+      if (!_isFallback) {
+        console.warn(
+          `[edge-tts] Empty audio response for language "${requestedLanguage}". Falling back to en-US.`
+        )
+        return synthesizeWithEdgeTTS(text, { languageCode: 'en-US', personaId: options?.personaId }, true)
+      }
+      return null
+    }
 
     const audioBuffer = Buffer.concat(chunks)
     const audioBase64 = audioBuffer.toString('base64')
 
     return { audioBase64, format: 'mp3' }
   } catch (err) {
-    console.warn('[edge-tts] Synthesis failed:', (err as Error).message)
-    return null
+    const failureReason = (err as Error).message || 'Unknown error'
+
+    // If this is already a fallback attempt, don't retry again
+    if (_isFallback) {
+      console.warn('[edge-tts] Fallback synthesis (en-US) also failed:', failureReason)
+      return null
+    }
+
+    // Log warning with requested language code and failure reason, then fall back to en-US
+    console.warn(
+      `[edge-tts] Synthesis failed for language "${requestedLanguage}": ${failureReason}. Falling back to en-US.`
+    )
+    return synthesizeWithEdgeTTS(text, { languageCode: 'en-US', personaId: options?.personaId }, true)
   }
 }
 
@@ -171,4 +215,28 @@ function mapGeminiVoiceToEdge(geminiVoice: string, languageCode?: string): strin
   const isFemale = GEMINI_FEMALE.includes(geminiVoice)
 
   return isFemale ? config.primary : config.fallback
+}
+
+/**
+ * Synthesize a short persona sample for the landing page.
+ * Returns raw audio Buffer (mp3) + content-type, so the caller can stream it
+ * straight back to the browser without re-encoding.
+ */
+export async function synthesizePersonaSample(opts: {
+  voiceName: string
+  text: string
+  language: string
+}): Promise<{ audio: Buffer; contentType: string }> {
+  const result = await synthesizeWithEdgeTTS(opts.text, {
+    voiceName: opts.voiceName,
+    languageCode: opts.language,
+  })
+  if (!result) throw new Error('Edge TTS returned no audio')
+
+  // `synthesizeWithEdgeTTS` returns base64 — decode back to a Buffer
+  // for direct streaming in the route handler.
+  return {
+    audio: Buffer.from(result.audioBase64, 'base64'),
+    contentType: 'audio/mpeg',
+  }
 }

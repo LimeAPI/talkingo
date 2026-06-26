@@ -24,6 +24,8 @@ import { Client, Account } from 'node-appwrite'
 export interface AuthContext {
   userId: string
   jwt: string
+  /** The verified account email (from the Appwrite session), or null if unset. */
+  email: string | null
 }
 
 /**
@@ -46,7 +48,7 @@ export async function verifyAuth(req: NextRequest): Promise<AuthContext | null> 
 
     const account = new Account(client)
     const user = await account.get()
-    return { userId: user.$id, jwt }
+    return { userId: user.$id, jwt, email: user.email || null }
   } catch {
     return null
   }

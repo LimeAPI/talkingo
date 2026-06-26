@@ -182,13 +182,13 @@ class GeminiClientService {
 
       const result: GeminiConversationResponse = {
         aiResponse: parsedResponse.response || fullText || "Sorry, could you say that again?",
-        translation: parsedResponse.translation,
         corrections: Array.isArray(parsedResponse.corrections) ? parsedResponse.corrections : [],
-        vocab: Array.isArray(parsedResponse.vocab) ? parsedResponse.vocab : [],
-        emotion: parsedResponse.emotion || 'warm',
         unitComplete: parsedResponse.unitComplete === true,
         memoryUpdate: typeof parsedResponse.memoryUpdate === 'string' && parsedResponse.memoryUpdate.trim()
           ? parsedResponse.memoryUpdate.trim()
+          : undefined,
+        responseParts: Array.isArray(parsedResponse.responseParts) && parsedResponse.responseParts.length >= 2
+          ? parsedResponse.responseParts.filter((p: unknown) => typeof p === 'string' && (p as string).trim().length > 0).slice(0, 3)
           : undefined,
       }
 
@@ -244,11 +244,32 @@ class GeminiClientService {
     return data
   }
 
+  /**
+   * Analyze one user turn from a live voice call — returns corrections, an
+   * optional memory note, and an optional language/script-normalized transcript.
+   * Soft-fails to an empty result so it never disrupts the live conversation.
+   */
+  async analyzeVoiceTurn(
+    userText: string,
+    state: ConversationState
+  ): Promise<{ normalizedTranscript?: string; corrections: any[]; memoryUpdate?: string }> {
+    try {
+      const res = await authFetch('/api/gemini/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userText, state }),
+      })
+      if (!res.ok) return { corrections: [] }
+      return await res.json()
+    } catch {
+      return { corrections: [] }
+    }
+  }
+
   async assessLevel(
     userText: string,
     targetLanguage: TargetLanguage
-  ): Promise<GeminiAssessmentResponse> {
-    const res = await authFetch('/api/gemini/chat', {
+  ): Promise<GeminiAssessmentResponse> {    const res = await authFetch('/api/gemini/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'assessment', userText, targetLanguage }),
@@ -280,8 +301,17 @@ class GeminiClientService {
   setMode(_mode: 'manual' | 'handsfree' | 'native') {}
 
   /** Set the BCP-47 locale used by recognition. Call before startListening. */
-  setLanguage(targetLanguage: TargetLanguage | undefined) {
-    this.currentLang = getBcp47(targetLanguage)
+  setLanguage(targetLanguage: TargetLanguage | undefined, nativeLanguage?: TargetLanguage | string, level?: number) {
+    // At beginner levels (1-2), the user speaks mostly their native language,
+    // so set recognition to native for accurate transcription.
+    // At L3-4, user is mixing — use target since we want to encourage target attempts.
+    // At L5+, user speaks target language.
+    const effectiveLevel = level ?? 5
+    if (effectiveLevel <= 2 && nativeLanguage) {
+      this.currentLang = getBcp47(nativeLanguage as TargetLanguage)
+    } else {
+      this.currentLang = getBcp47(targetLanguage)
+    }
     if (this.recognition) {
       this.recognition.lang = this.currentLang
     }

@@ -5,8 +5,9 @@
  * env vars aren't available during static analysis.
  */
 
+import 'server-only'
 import DodoPayments from 'dodopayments'
-import { DODOPAYMENTS_ENV } from './env'
+import { DODOPAYMENTS_ENV, getDodoEnvironment } from './env'
 
 let _dodo: DodoPayments | null = null
 
@@ -14,6 +15,7 @@ function getDodoInstance(): DodoPayments {
   if (_dodo) return _dodo
   _dodo = new DodoPayments({
     bearerToken: DODOPAYMENTS_ENV.DODOPAYMENTS_API_KEY,
+    environment: getDodoEnvironment(),
   })
   return _dodo
 }

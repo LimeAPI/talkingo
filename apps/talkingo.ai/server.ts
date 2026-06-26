@@ -1,11 +1,11 @@
 /**
- * Custom Next.js server — adds WebSocket support for the Gemini Live proxy.
+ * Custom Next.js server — production entry point.
  *
- * Next.js App Router route handlers cannot handle WebSocket upgrades.
- * This server intercepts upgrade requests to /api/gemini/live and proxies
- * them to the Gemini Live API, keeping the API key server-side.
+ * In development, use `next dev --turbopack` for fast HMR and run the
+ * WebSocket server separately via `tsx ws-server.ts`.
  *
- * All other requests are handled by Next.js as normal.
+ * In production, this server bundles both Next.js and the WebSocket proxy
+ * into a single process for simpler deployment.
  */
 
 import { createServer } from 'http'
@@ -29,8 +29,6 @@ async function getLiveMasterPrompt(): Promise<string | null> {
     return _cachedMasterPrompt
   }
   try {
-    // system_config has read("any") permission — no API key needed for this
-    // public read. Anyone with the project ID can fetch the master prompt.
     const client = new Client()
       .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
       .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!)
@@ -48,6 +46,66 @@ async function getLiveMasterPrompt(): Promise<string | null> {
     console.warn('[live-proxy] Could not fetch master prompt from DB, using default:', e)
   }
   return null
+}
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+const WS_RATE_LIMIT = 120
+// Cap the store so a flood of distinct userIds (or minted JWTs) can't grow the
+// Map unboundedly and exhaust memory. When full, the oldest entry is evicted.
+const WS_RATE_LIMIT_MAX_ENTRIES = 10_000
+const WS_WINDOW_MS = 60_000
+const wsRateLimitStore = new Map<string, { count: number; resetAt: number }>()
+
+function checkWsRateLimit(userId: string): boolean {
+  const now = Date.now()
+  const entry = wsRateLimitStore.get(userId)
+  if (!entry || now > entry.resetAt) {
+    // Evict the oldest entry (insertion-ordered Map) once we hit the cap.
+    if (!entry && wsRateLimitStore.size >= WS_RATE_LIMIT_MAX_ENTRIES) {
+      const oldestKey = wsRateLimitStore.keys().next().value
+      if (oldestKey !== undefined) wsRateLimitStore.delete(oldestKey)
+    }
+    // Re-insert so refreshed entries move to the end (LRU-ish ordering).
+    wsRateLimitStore.delete(userId)
+    wsRateLimitStore.set(userId, { count: 1, resetAt: now + WS_WINDOW_MS })
+    return true
+  }
+  if (entry.count >= WS_RATE_LIMIT) return false
+  entry.count++
+  return true
+}
+
+// Sweep expired entries frequently (every 60s) so memory is reclaimed promptly
+// rather than letting entries linger for minutes.
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, entry] of wsRateLimitStore) {
+    if (now > entry.resetAt) wsRateLimitStore.delete(key)
+  }
+}, 60_000).unref()
+
+// ─── Input validation ─────────────────────────────────────────────────────────
+const MAX_TEXT_LENGTH = 4000
+const MAX_AUDIO_B64_LENGTH = 200_000
+
+/**
+ * Validate a base64 audio chunk. Accepts both standard and URL-safe (base64url)
+ * alphabets, tolerates whitespace/newlines, and does not require padding — many
+ * encoders omit it. We normalize to standard base64 and verify it decodes to a
+ * non-empty buffer rather than relying on a strict regex that would reject
+ * otherwise-valid payloads.
+ */
+function isValidBase64(str: string): boolean {
+  // Strip whitespace/newlines and normalize URL-safe chars to standard base64.
+  const normalized = str.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/')
+  if (normalized.length === 0) return false
+  // Only base64 alphabet characters (plus optional trailing padding) allowed.
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(normalized)) return false
+  try {
+    return Buffer.from(normalized, 'base64').length > 0
+  } catch {
+    return false
+  }
 }
 
 const dev = process.env.NODE_ENV !== 'production'
@@ -74,19 +132,12 @@ app.prepare().then(() => {
 
     // Allow Next.js HMR WebSocket connections
     if (pathname?.startsWith('/_next/webpack-hmr')) {
-      // Let Next.js handle HMR WebSocket upgrades
       return
     }
 
     if (pathname === '/api/gemini/live') {
-      // ── Auth: verify Appwrite JWT ──────────────────────────────────────
-      // Mirrors the auth-guard used by /api/* routes. WebSocket clients send
-      // the JWT as a query param because browsers can't attach custom headers
-      // to a WebSocket upgrade request.
       const parsedWsUrl = parse(req.url ?? '/', true)
       const queryJwt = parsedWsUrl.query?.jwt as string | undefined
-      // Accept legacy `?session=` for any clients that haven't refreshed yet,
-      // but treat it as a JWT (clients have moved to JWT auth).
       const queryFallback = parsedWsUrl.query?.session as string | undefined
       const jwt = queryJwt || queryFallback
 
@@ -96,8 +147,6 @@ app.prepare().then(() => {
         return
       }
 
-      // Verify the JWT against Appwrite before upgrading. This blocks anyone
-      // from binding the live model with a forged token.
       verifyAppwriteJwt(jwt)
         .then((userId) => {
           if (!userId) {
@@ -127,7 +176,6 @@ app.prepare().then(() => {
 
 /**
  * Verify an Appwrite JWT. Returns the user id on success, null otherwise.
- * Mirrors src/lib/api/auth-guard.ts for HTTP routes.
  */
 async function verifyAppwriteJwt(jwt: string): Promise<string | null> {
   try {
@@ -147,7 +195,7 @@ async function verifyAppwriteJwt(jwt: string): Promise<string | null> {
 function handleLiveSession(clientWs: WebSocket, userId: string) {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
-    clientWs.send(JSON.stringify({ type: 'error', message: 'GEMINI_API_KEY not configured' }))
+    clientWs.send(JSON.stringify({ type: 'error', message: 'Service unavailable' }))
     clientWs.close(1011)
     return
   }
@@ -156,7 +204,6 @@ function handleLiveSession(clientWs: WebSocket, userId: string) {
 
   let geminiWs: WebSocket | null = null
   let setupDone = false
-  /** True after we've sent `ready` to the client. */
   let readySent = false
 
   const sendToClient = (msg: object) => {
@@ -166,9 +213,20 @@ function handleLiveSession(clientWs: WebSocket, userId: string) {
   }
 
   clientWs.on('message', async (raw) => {
+    // ── Rate limit ──
+    if (!checkWsRateLimit(userId)) {
+      sendToClient({ type: 'error', message: 'Too many messages. Slow down.' })
+      return
+    }
+
     let msg: any
     try { msg = JSON.parse(raw.toString()) } catch {
       sendToClient({ type: 'error', message: 'Invalid JSON' })
+      return
+    }
+
+    if (!msg || typeof msg.type !== 'string') {
+      sendToClient({ type: 'error', message: 'Missing message type' })
       return
     }
 
@@ -180,7 +238,6 @@ function handleLiveSession(clientWs: WebSocket, userId: string) {
       const state: ConversationState = msg.state ?? {}
       const persona = getPersonaById(state.persona ?? 'eli')
       const voiceName: string = msg.voiceName ?? persona?.voiceName ?? 'Aoede'
-      // Fetch master prompt from DB (with cache) so live mode respects admin changes
       const masterPrompt = await getLiveMasterPrompt()
       const systemInstruction = buildLiveSystemInstruction(state, masterPrompt ?? undefined)
 
@@ -257,6 +314,14 @@ function handleLiveSession(clientWs: WebSocket, userId: string) {
 
     // ── Audio chunk ──
     if (msg.type === 'audio') {
+      if (!msg.data || typeof msg.data !== 'string' || msg.data.length > MAX_AUDIO_B64_LENGTH) {
+        sendToClient({ type: 'error', message: 'Invalid audio data' })
+        return
+      }
+      if (!isValidBase64(msg.data)) {
+        sendToClient({ type: 'error', message: 'Invalid audio format' })
+        return
+      }
       geminiWs.send(JSON.stringify({
         realtimeInput: {
           audio: { data: msg.data, mimeType: 'audio/pcm;rate=16000' },
@@ -266,13 +331,19 @@ function handleLiveSession(clientWs: WebSocket, userId: string) {
     }
 
     // ── Text turn ──
-    // Use clientContent (not realtimeInput.text) so we can mark turnComplete=true
-    // and force the model to respond. realtimeInput.text just appends to the
-    // input buffer and waits for VAD to commit, which never happens for typed text.
     if (msg.type === 'text') {
+      if (!msg.text || typeof msg.text !== 'string') {
+        sendToClient({ type: 'error', message: 'Invalid text message' })
+        return
+      }
+      const sanitized = msg.text.trim()
+      if (sanitized.length === 0 || sanitized.length > MAX_TEXT_LENGTH) {
+        sendToClient({ type: 'error', message: 'Text too long or empty' })
+        return
+      }
       geminiWs.send(JSON.stringify({
         clientContent: {
-          turns: [{ role: 'user', parts: [{ text: msg.text }] }],
+          turns: [{ role: 'user', parts: [{ text: sanitized }] }],
           turnComplete: true,
         },
       }))
@@ -384,13 +455,10 @@ function handleGeminiMessage(
 
 function buildLiveSystemInstruction(state: ConversationState, masterPrompt?: string): string {
   const full = getSystemInstruction(state)
-  // Strip JSON format block — it sits between "═══ RESPONSE FORMAT ═══" and "TARGET LANGUAGE:"
-  const formatBlockRegex = /═══ RESPONSE FORMAT ═══[\\s\\S]*?(?=\\n\\nTARGET LANGUAGE:)/
+  // The RESPONSE_FORMAT (JSON spec) is always the last block. Voice mode speaks out
+  // loud, so strip the entire JSON format spec — from "Return ONLY valid JSON" to the end.
   const stripped = full
-    .replace(formatBlockRegex, '')
-    .replace(/^.*Return ONLY valid JSON.*$/gmi, '')
-    .replace(/"response"/g, 'your reply')
-    .replace(/"translation"/g, 'translations')
+    .replace(/Return ONLY valid JSON[\s\S]*$/i, '')
     .trim()
 
   return `${stripped}
@@ -398,7 +466,7 @@ function buildLiveSystemInstruction(state: ConversationState, masterPrompt?: str
 ═══ CRITICAL — VOICE MODE ═══
 You are SPEAKING OUT LOUD. Everything you write becomes audio. You must follow these rules:
 
-1. NO STRUCTURED DATA — Never output JSON, code, markdown, bullet lists, or any field names like "response:", "corrections:", "vocab:", "teachingNote:". Say only natural spoken sentences.
-2. CORRECT NATURALLY — Never announce corrections or mention teaching notes. Simply rephrase the correct version in your reply (recasting).
+1. NO STRUCTURED DATA — Never output JSON, code, markdown, bullet lists, or any field names like "response:", "corrections:". Say only natural spoken sentences.
+2. CORRECT NATURALLY — Simply rephrase the correct version in your reply (recasting).
 3. CONCISE — 2–4 sentences per turn. End with a question.`
 }

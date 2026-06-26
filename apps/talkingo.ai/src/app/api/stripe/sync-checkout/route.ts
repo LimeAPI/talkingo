@@ -1,64 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { syncFromCheckoutSession } from '@/lib/stripe/sync'
+import { NextRequest } from 'next/server'
+import { POST as billingSyncCheckout } from '@/app/api/billing/sync-checkout/route'
+import { forwardToBillingAsStripe } from '@/lib/payments/stripe-shim'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * POST /api/stripe/sync-checkout
+ * DEPRECATED thin shim → POST /api/billing/sync-checkout.
  *
- * Called by the browser immediately after Stripe redirects back with
- * `?subscription=success&session_id=...`. Pulls the live subscription
- * from Stripe and writes it to Appwrite, so the user sees Premium right
- * away regardless of whether the webhook has fired yet.
+ * Kept for backward compatibility during the unified-payments rollout. Contains
+ * no Stripe SDK logic (Req 1.4): it injects `provider: 'stripe'` into the body
+ * (legacy callers pass only `{ sessionId }`) and delegates to the
+ * provider-agnostic return-from-checkout sync route, which resolves the Stripe
+ * provider through the registry and performs the ownership / tampered-price
+ * assertions before persisting.
  *
- * Body: { sessionId: string }
- *
- * Returns: { status, plan, customerId, trialEnd, periodEnd, cancelAtPeriodEnd }
+ * New clients should call `/api/billing/sync-checkout` directly with an
+ * explicit `provider`.
  */
-
 export async function POST(req: NextRequest) {
-  try {
-    const { verifyAuth, checkRateLimit, validateOrigin } = await import('@/lib/api/auth-guard')
-
-    if (!validateOrigin(req)) {
-      return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
-    }
-
-    const auth = await verifyAuth(req)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const rl = checkRateLimit(`stripe:sync:${auth.userId}`, 10, 60_000)
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { error: 'rate_limited' },
-        { status: 429, headers: { 'Retry-After': '60' } }
-      )
-    }
-
-    const body = await req.json().catch(() => ({}))
-    const { sessionId } = body as { sessionId?: string }
-    if (!sessionId) {
-      return NextResponse.json({ error: 'sessionId required' }, { status: 400 })
-    }
-
-    const result = await syncFromCheckoutSession({ userId: auth.userId, sessionId })
-    if (!result) {
-      return NextResponse.json({ error: 'Subscription not yet ready' }, { status: 202 })
-    }
-
-    return NextResponse.json(result)
-  } catch (err: any) {
-    const msg = err?.message || 'Failed to sync subscription'
-    if (msg.includes('does not belong')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-    if (msg.includes('Invalid subscription price')) {
-      return NextResponse.json({ error: 'Invalid subscription price' }, { status: 400 })
-    }
-    console.error('[stripe/sync-checkout] Error:', msg)
-    return NextResponse.json({ error: 'Sync failed' }, { status: 500 })
-  }
+  return forwardToBillingAsStripe(req, billingSyncCheckout)
 }

@@ -5,6 +5,7 @@
  * env vars aren't available during static analysis.
  */
 
+import 'server-only'
 import Stripe from 'stripe'
 import { STRIPE_ENV, STRIPE_API_VERSION } from './env'
 
@@ -13,7 +14,7 @@ let _stripe: Stripe | null = null
 function getStripeInstance(): Stripe {
   if (_stripe) return _stripe
   _stripe = new Stripe(STRIPE_ENV.STRIPE_SECRET_KEY, {
-    apiVersion: STRIPE_API_VERSION as Stripe.LatestApiVersion,
+    apiVersion: STRIPE_API_VERSION,
     typescript: true,
   })
   return _stripe

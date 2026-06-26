@@ -1,19 +1,26 @@
 /**
- * Unified Chat Sessions — single source of truth for all conversation history.
+ * Robust Chat Sessions — bulletproof conversation history persistence.
  *
- * DESIGN:
- * - Auto-saves on every message (debounced 500ms)
- * - A session is created the moment the first message arrives
- * - Keeps last 30 sessions per user
- * - In call/live modes: saves transcription only (no audio blobs)
- * - In chat/handsfree modes: saves full messages including voice note audio
- * - Sessions persist across page refresh, tab close, accidental navigation
- * - No manual "save" step needed — it just works like any chat app
+ * DESIGN PRINCIPLES:
+ * 1. IMMEDIATE writes — no debounce, no timer, no race conditions.
+ *    localStorage.setItem is synchronous and takes <2ms for text data.
+ * 2. ONE data location — sessions list is the single source of truth.
+ *    No separate "active marker" that can drift out of sync.
+ * 3. ALWAYS saves — no toggle, no setting that can silently disable persistence.
+ * 4. QUOTA-AWARE — proactively manages storage space:
+ *    - Keeps audio for last 5 sessions, strips from older ones
+ *    - On quota error, strips all audio and retries
+ *    - Never silently swallows a write failure without attempting recovery
+ * 5. Session created in list immediately — no deferred/orphaned states.
  *
- * STORAGE: localStorage only (device-bound). ~5-50KB per session.
+ * STORAGE: localStorage only (device-bound). Managed to stay within ~4MB.
+ * - 30 sessions max (FIFO eviction)
+ * - Audio blobs kept for last 5 sessions (manual/handsfree modes)
+ * - Native/Live modes: transcription text only, never stores audio
  */
 
-import type { ConversationMessage, PersonaId, TargetLanguage, Correction } from '@talkingo/shared/types'
+import type { ConversationMessage, PersonaId } from '@talkingo/shared/types'
+import { markLessonComplete } from '@/lib/storage/lesson-progress'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -52,43 +59,163 @@ export interface ChatSession {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MAX_SESSIONS = 30
+/** Number of most-recent sessions that retain audio blobs */
+const AUDIO_RETAIN_COUNT = 5
 const STORAGE_KEY_PREFIX = 'talkingo_sessions_'
-const ACTIVE_SESSION_KEY = 'talkingo_active_session'
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Storage key ─────────────────────────────────────────────────────────────
 
 function storageKey(userId: string | null): string {
   return `${STORAGE_KEY_PREFIX}${userId || 'anon'}`
 }
 
-function activeSessionKey(userId: string | null): string {
-  return `${ACTIVE_SESSION_KEY}_${userId || 'anon'}`
+// ─── Audio management ────────────────────────────────────────────────────────
+
+/**
+ * Strip audio blob data from messages but keep metadata (duration, format, voiceName).
+ * This lets the UI show "🎤 Voice message (4s)" without the heavy base64 data.
+ */
+function stripAudioBlobs(messages: ConversationMessage[]): ConversationMessage[] {
+  return messages.map((m) => {
+    if (m.audio?.data) {
+      return {
+        ...m,
+        audio: {
+          ...m.audio,
+          data: undefined, // Remove the heavy base64 blob
+          status: 'idle' as const, // Mark as not playable
+        },
+      }
+    }
+    return m
+  })
 }
 
 /**
- * Strip audio blobs from messages for call/live modes (transcription only).
- * For chat/handsfree modes, keep audio data intact.
+ * For native/live modes, strip audio entirely (only transcription matters).
  */
-function prepareMessagesForStorage(messages: ConversationMessage[], mode: SessionMode): ConversationMessage[] {
-  // Strip audio only for native/live modes (real-time, no persistent audio)
-  // For manual/handsfree: keep voice note audio for replay in history
+function stripAudioForRealtimeModes(messages: ConversationMessage[]): ConversationMessage[] {
+  return messages.map((m) => {
+    if (m.audio) {
+      const { audio: _audio, ...rest } = m
+      return rest
+    }
+    return m
+  })
+}
+
+/**
+ * Prepare messages for storage based on mode.
+ * - native/live: strip audio completely (transcription only)
+ * - manual/handsfree: keep full audio (quota managed separately)
+ */
+function prepareMessages(messages: ConversationMessage[], mode: SessionMode): ConversationMessage[] {
   if (mode === 'native' || mode === 'live') {
-    return messages.map((m) => {
-      if (m.audio) {
-        const { audio: _audio, ...rest } = m
-        return rest
-      }
-      return m
-    })
+    return stripAudioForRealtimeModes(messages)
   }
-  // Manual/handsfree: preserve audio data for voice note replay
   return messages
+}
+
+/**
+ * Enforce audio retention policy on the sessions list.
+ * Only the most recent AUDIO_RETAIN_COUNT sessions keep their audio blobs.
+ * Older sessions have audio stripped (metadata preserved).
+ */
+function enforceAudioPolicy(sessions: ChatSession[]): ChatSession[] {
+  return sessions.map((session, index) => {
+    // Sessions are stored most-recent-first, so index 0 = newest
+    if (index < AUDIO_RETAIN_COUNT) return session
+    // Strip audio blobs from older sessions
+    const hasAudio = session.messages.some((m) => m.audio?.data)
+    if (!hasAudio) return session
+    return {
+      ...session,
+      messages: stripAudioBlobs(session.messages),
+    }
+  })
+}
+
+// ─── Quota-safe write ────────────────────────────────────────────────────────
+
+/**
+ * Write sessions to localStorage with quota recovery.
+ * Strategy:
+ * 1. Try to write as-is
+ * 2. If quota error, strip audio from all but current session and retry
+ * 3. If still fails, strip ALL audio and retry
+ * 4. If still fails, evict oldest sessions until it fits
+ * 5. Only after all recovery fails, log a warning (never silently lose data)
+ */
+function safeWrite(userId: string | null, sessions: ChatSession[]): boolean {
+  const key = storageKey(userId)
+
+  // Attempt 1: write as-is
+  try {
+    localStorage.setItem(key, JSON.stringify(sessions))
+    return true
+  } catch {
+    // Quota exceeded — try recovery
+  }
+
+  // Attempt 2: strip audio from all except the first (most recent) session
+  try {
+    const stripped = sessions.map((s, i) => {
+      if (i === 0) return s
+      const hasAudio = s.messages.some((m) => m.audio?.data)
+      if (!hasAudio) return s
+      return { ...s, messages: stripAudioBlobs(s.messages) }
+    })
+    localStorage.setItem(key, JSON.stringify(stripped))
+    console.warn('[ChatSessions] Quota tight — stripped audio from older sessions')
+    return true
+  } catch {
+    // Still too big
+  }
+
+  // Attempt 3: strip ALL audio
+  try {
+    const fullyStripped = sessions.map((s) => ({
+      ...s,
+      messages: stripAudioBlobs(s.messages),
+    }))
+    localStorage.setItem(key, JSON.stringify(fullyStripped))
+    console.warn('[ChatSessions] Quota tight — stripped ALL audio')
+    return true
+  } catch {
+    // Still too big
+  }
+
+  // Attempt 4: progressively evict oldest sessions
+  let reduced = sessions.map((s) => ({
+    ...s,
+    messages: stripAudioBlobs(s.messages),
+  }))
+  while (reduced.length > 1) {
+    reduced = reduced.slice(0, -1) // Remove oldest
+    try {
+      localStorage.setItem(key, JSON.stringify(reduced))
+      console.warn(`[ChatSessions] Quota critical — evicted sessions, ${reduced.length} remaining`)
+      return true
+    } catch {
+      // Keep evicting
+    }
+  }
+
+  // Final attempt: write just the current session
+  try {
+    localStorage.setItem(key, JSON.stringify(reduced))
+    console.error('[ChatSessions] Quota emergency — only current session saved')
+    return true
+  } catch {
+    console.error('[ChatSessions] FATAL: Cannot write to localStorage at all')
+    return false
+  }
 }
 
 // ─── Core API ────────────────────────────────────────────────────────────────
 
 /**
- * Create a new session. Called when a conversation starts (first message arrives).
+ * Create a new session. Immediately added to the sessions list.
  * Returns the session ID.
  */
 export function createSession(
@@ -120,23 +247,17 @@ export function createSession(
     totalCorrections: 0,
   }
 
-  // Save as active session for crash recovery
-  try {
-    localStorage.setItem(activeSessionKey(userId), JSON.stringify(session))
-  } catch {
-    // ignore quota errors
-  }
-
-  // NOTE: Session is NOT added to the list yet — waits for first real message.
-  // updateSession() handles adding to the list on first save.
-  // This prevents empty sessions (native mode creating a session before messages exist).
+  // Immediately add to the sessions list — no deferred state
+  const sessions = loadAllSessions(userId)
+  const updated = [session, ...sessions].slice(0, MAX_SESSIONS)
+  safeWrite(userId, updated)
 
   return id
 }
 
 /**
- * Update the active session with new messages. Called on every message change.
- * This is the auto-save — no manual trigger needed.
+ * Save messages to a session. Called on EVERY message change — no debounce.
+ * This is a synchronous write (~1-2ms for text data).
  */
 export function updateSession(
   userId: string | null,
@@ -145,78 +266,62 @@ export function updateSession(
   mode: SessionMode,
   durationSeconds: number
 ): void {
-  try {
-    const prepared = prepareMessagesForStorage(messages, mode)
-    const totalCorrections = prepared.reduce(
-      (sum, m) => sum + (m.corrections?.length || 0),
-      0
-    )
+  const sessions = loadAllSessions(userId)
+  const idx = sessions.findIndex((s) => s.id === sessionId)
+  if (idx === -1) return // Session doesn't exist — shouldn't happen
 
-    const sessions = loadAllSessions(userId)
-    const idx = sessions.findIndex((s) => s.id === sessionId)
+  const prepared = prepareMessages(messages, mode)
+  const totalCorrections = prepared.reduce(
+    (sum, m) => sum + (m.corrections?.length || 0),
+    0
+  )
 
-    if (idx === -1) {
-      // First time saving — session was created by createSession() but not yet
-      // added to the list (prevents empty sessions in history).
-      // Load from active marker and add to list now that we have real messages.
-      const active = getActiveSession(userId)
-      if (!active || active.id !== sessionId) return
-      const updatedSession: ChatSession = {
-        ...active,
-        messages: prepared,
-        updatedAt: Date.now(),
-        durationSeconds,
-        totalCorrections,
-      }
-      _addSessionToList(userId, updatedSession)
-      localStorage.setItem(activeSessionKey(userId), JSON.stringify(updatedSession))
-    } else {
-      sessions[idx] = {
-        ...sessions[idx],
-        messages: prepared,
-        updatedAt: Date.now(),
-        durationSeconds,
-        totalCorrections,
-      }
-      localStorage.setItem(storageKey(userId), JSON.stringify(sessions))
-      localStorage.setItem(activeSessionKey(userId), JSON.stringify(sessions[idx]))
-    }
-  } catch {
-    // ignore quota errors — better to lose recent messages than crash
+  sessions[idx] = {
+    ...sessions[idx],
+    messages: prepared,
+    updatedAt: Date.now(),
+    durationSeconds,
+    totalCorrections,
   }
+
+  // Enforce audio policy before writing
+  const managed = enforceAudioPolicy(sessions)
+  safeWrite(userId, managed)
 }
 
 /**
- * Mark a session as ended. Called when the user ends the call/chat.
+ * Mark a session as ended.
+ * Also computes quality metrics for lesson completion tracking.
  */
 export function endSession(
   userId: string | null,
   sessionId: string,
   finalDuration: number
 ): void {
-  try {
-    const sessions = loadAllSessions(userId)
-    const idx = sessions.findIndex((s) => s.id === sessionId)
-    if (idx === -1) return
+  const sessions = loadAllSessions(userId)
+  const idx = sessions.findIndex((s) => s.id === sessionId)
+  if (idx === -1) return
 
-    sessions[idx] = {
-      ...sessions[idx],
-      status: 'ended',
-      durationSeconds: finalDuration,
-      updatedAt: Date.now(),
-    }
+  const session = sessions[idx]
 
-    localStorage.setItem(storageKey(userId), JSON.stringify(sessions))
+  sessions[idx] = {
+    ...session,
+    status: 'ended',
+    durationSeconds: finalDuration,
+    updatedAt: Date.now(),
+  }
 
-    // Clear active session marker
-    localStorage.removeItem(activeSessionKey(userId))
-  } catch {
-    // ignore
+  safeWrite(userId, sessions)
+
+  // Compute quality metrics and mark lesson complete
+  if (session.scenarioId && session.scenarioId !== 'free-talk') {
+    const quality = computeQualityMetrics(session.messages)
+    markLessonComplete(session.scenarioId, quality)
   }
 }
 
 /**
- * Load all sessions for a user (most recent first). This is what the history page reads.
+ * Load all sessions for a user (most recent first).
  */
 export function loadAllSessions(userId: string | null): ChatSession[] {
   try {
@@ -230,99 +335,70 @@ export function loadAllSessions(userId: string | null): ChatSession[] {
 }
 
 /**
- * Load a specific session by ID.
- */
-export function getSessionById(userId: string | null, sessionId: string): ChatSession | null {
-  const sessions = loadAllSessions(userId)
-  return sessions.find((s) => s.id === sessionId) || null
-}
-
-/**
- * Delete a session by ID.
- */
-export function deleteSession(userId: string | null, sessionId: string): boolean {
-  try {
-    const sessions = loadAllSessions(userId)
-    const filtered = sessions.filter((s) => s.id !== sessionId)
-    localStorage.setItem(storageKey(userId), JSON.stringify(filtered))
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
  * Clear all sessions for a user.
  */
 export function clearAllSessions(userId: string | null): void {
   try {
     localStorage.removeItem(storageKey(userId))
-    localStorage.removeItem(activeSessionKey(userId))
   } catch {
     // ignore
   }
 }
 
 /**
- * Get the active (in-progress) session if any. Used for crash recovery.
+ * Recover any active (non-ended) sessions on mount.
+ * Marks them as ended so they appear properly in history.
+ * Returns the most recent recovered session (for structured memory processing).
  */
-export function getActiveSession(userId: string | null): ChatSession | null {
-  try {
-    const raw = localStorage.getItem(activeSessionKey(userId))
-    if (!raw) return null
-    return JSON.parse(raw) as ChatSession
-  } catch {
-    return null
-  }
-}
-
-/**
- * Recover an active session that was interrupted (page refresh, crash).
- * Marks it as ended and ensures it's in the sessions list.
- */
-export function recoverActiveSession(userId: string | null): ChatSession | null {
-  const active = getActiveSession(userId)
-  if (!active || active.messages.length === 0) {
-    // Nothing to recover — clear the marker
-    try { localStorage.removeItem(activeSessionKey(userId)) } catch {}
-    return null
-  }
-
-  // Mark as ended
-  active.status = 'ended'
-  active.updatedAt = Date.now()
-
-  // Ensure it's in the sessions list
+export function recoverActiveSessions(userId: string | null): ChatSession | null {
   const sessions = loadAllSessions(userId)
-  const exists = sessions.some((s) => s.id === active.id)
-  if (!exists) {
-    _addSessionToList(userId, active)
-  } else {
-    // Update the existing entry
-    const idx = sessions.findIndex((s) => s.id === active.id)
-    if (idx !== -1) {
-      sessions[idx] = active
-      try { localStorage.setItem(storageKey(userId), JSON.stringify(sessions)) } catch {}
+  let recovered: ChatSession | null = null
+
+  let changed = false
+  for (let i = 0; i < sessions.length; i++) {
+    if (sessions[i].status === 'active' && sessions[i].messages.length > 0) {
+      sessions[i] = { ...sessions[i], status: 'ended', updatedAt: Date.now() }
+      if (!recovered) recovered = sessions[i]
+      changed = true
     }
   }
 
-  // Clear active marker
-  try { localStorage.removeItem(activeSessionKey(userId)) } catch {}
+  // Also remove any empty active sessions (sessions created but no messages sent)
+  const cleaned = sessions.filter((s) => !(s.status === 'active' && s.messages.length === 0))
+  if (cleaned.length !== sessions.length) changed = true
 
-  return active
+  if (changed) {
+    safeWrite(userId, cleaned)
+  }
+
+  // Also clean up legacy active session markers (migration from old code)
+  try {
+    const legacyKey = `talkingo_active_session_${userId || 'anon'}`
+    localStorage.removeItem(legacyKey)
+  } catch {}
+
+  return recovered
 }
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
-function _addSessionToList(userId: string | null, session: ChatSession): void {
-  try {
-    const sessions = loadAllSessions(userId)
-    // Add to front (most recent first), cap at MAX_SESSIONS
-    const updated = [session, ...sessions.filter((s) => s.id !== session.id)].slice(0, MAX_SESSIONS)
-    localStorage.setItem(storageKey(userId), JSON.stringify(updated))
-  } catch {
-    // ignore quota errors
+function computeQualityMetrics(messages: ConversationMessage[]): {
+  totalCorrections: number
+  correctionTypes: Record<string, number>
+} {
+  let totalCorrections = 0
+  const correctionTypes: Record<string, number> = {}
+
+  for (const msg of messages) {
+    if (msg.corrections && msg.corrections.length > 0) {
+      totalCorrections += msg.corrections.length
+      for (const c of msg.corrections) {
+        correctionTypes[c.type] = (correctionTypes[c.type] || 0) + 1
+      }
+    }
   }
+
+  return { totalCorrections, correctionTypes }
 }
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
@@ -331,36 +407,4 @@ export function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
-
-export function formatSessionDate(timestamp: number): string {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-  })
-}
-
-/**
- * Get a human-readable mode label.
- */
-export function modeLabel(mode: SessionMode): string {
-  switch (mode) {
-    case 'manual': return 'Chat'
-    case 'handsfree': return 'Hands-free'
-    case 'native': return 'Native'
-    case 'live': return 'Live Call'
-  }
 }

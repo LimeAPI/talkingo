@@ -16,6 +16,7 @@ import {
 } from './appwrite-storage'
 import { updateAccountPrefs, type AccountPrefsPayload } from '../auth/auth'
 import { validatePreferences } from '../utils/onboarding-check'
+import { setLocaleCookie } from '../../i18n/locale-cookie'
 import {
   loadLocalLifeline,
   saveLocalLifeline,
@@ -24,6 +25,17 @@ import {
   syncMemoryToAppwrite,
   loadMemoryFromAppwrite,
 } from './learner-memory'
+import {
+  loadStructuredMemory,
+  saveStructuredMemory,
+  syncStructuredMemoryToAppwrite,
+  loadStructuredMemoryFromAppwrite,
+  buildPlannerInjection,
+  processSessionEnd,
+  updateUserNote,
+  type StructuredMemory,
+  type SessionEndInput,
+} from './structured-memory'
 
 // ─── Settings Storage Interface ──────────────────────────────────────────────
 
@@ -93,6 +105,9 @@ function essentialPrefsForAccount(p: UserPreferences): AccountPrefsPayload {
     currentUnitId: p.currentUnitId,
     preferredScript: p.preferredScript,
     learnerGender: p.learnerGender,
+    dialect: p.dialect,
+    heritageMode: p.heritageMode,
+    uiLanguage: p.uiLanguage,
   }
 }
 
@@ -114,6 +129,9 @@ export function preferencesFromAccountPrefs(
     currentUnitId: ap.currentUnitId,
     preferredScript: ap.preferredScript as UserPreferences['preferredScript'],
     learnerGender: ap.learnerGender as UserPreferences['learnerGender'],
+    dialect: ap.dialect as UserPreferences['dialect'],
+    heritageMode: ap.heritageMode,
+    uiLanguage: ap.uiLanguage,
   }
 }
 
@@ -138,6 +156,12 @@ export async function savePreferences(
     console.error('[Storage] Failed to save preferences to localStorage:', error)
   }
 
+  // Sync the locale cookie so the server can resolve the correct UI language
+  // on the next render without waiting for client-side hydration (Req 8.5, 8.8).
+  if (preferences.uiLanguage) {
+    setLocaleCookie(preferences.uiLanguage)
+  }
+
   if (isAuthenticated && userId) {
     const results = await Promise.allSettled([
       updateAccountPrefs(essentialPrefsForAccount(preferences)),
@@ -154,6 +178,58 @@ export async function savePreferences(
   }
 }
 
+/**
+ * Save preferences and throw if persistence fails.
+ * Used by features that need to detect failure and revert optimistic state
+ * (e.g., script preference toggle revert-on-failure).
+ */
+export async function savePreferencesStrict(
+  userId: string | null,
+  preferences: UserPreferences,
+  isAuthenticated: boolean
+): Promise<void> {
+  const validation = validatePreferences(preferences)
+  if (!validation.isValid) {
+    console.warn('[Storage] Saving incomplete preferences:', {
+      userId,
+      missingFields: validation.missingFields,
+    })
+  }
+
+  const key = prefsKey(userId)
+  try {
+    localStorage.setItem(key, JSON.stringify(preferences))
+    if (preferences.onboardingComplete) markOnboarded(userId)
+  } catch (error) {
+    console.error('[Storage] Failed to save preferences to localStorage:', error)
+    throw new Error('Failed to persist preferences locally')
+  }
+
+  // Sync the locale cookie for immediate server-side resolution (Req 8.5, 8.8).
+  if (preferences.uiLanguage) {
+    setLocaleCookie(preferences.uiLanguage)
+  }
+
+  if (isAuthenticated && userId) {
+    const results = await Promise.allSettled([
+      updateAccountPrefs(essentialPrefsForAccount(preferences)),
+      saveUserPreferences(userId, preferences),
+    ])
+    const accountOk = results[0].status === 'fulfilled'
+    const docOk = results[1].status === 'fulfilled'
+    if (!accountOk) {
+      const reason = (results[0] as PromiseRejectedResult).reason
+      console.warn('[Storage] Account prefs sync failed:', reason)
+      throw new Error('Failed to persist preferences to account')
+    }
+    if (!docOk) {
+      const reason = (results[1] as PromiseRejectedResult).reason
+      console.warn('[Storage] Document sync failed:', reason)
+      throw new Error('Failed to persist preferences to document store')
+    }
+  }
+}
+
 export async function loadPreferences(
   userId: string | null,
   isAuthenticated: boolean,
@@ -165,6 +241,11 @@ export async function loadPreferences(
     try {
       localStorage.setItem(prefsKey(userId), JSON.stringify(fromAccount))
     } catch { /* ignore */ }
+
+    // Ensure locale cookie stays in sync with loaded preference
+    if (fromAccount.uiLanguage) {
+      setLocaleCookie(fromAccount.uiLanguage)
+    }
 
     if (isAuthenticated && userId) {
       void getUserPreferences(userId).then(doc => {
@@ -192,9 +273,15 @@ export async function loadPreferences(
           persona: doc.persona,
           userName: doc.userName || undefined,
           targetLanguage: doc.targetLanguage,
+          nativeLanguage: doc.nativeLanguage,
           learningGoal: doc.learningGoal,
           onboardingComplete: doc.onboardingComplete,
           currentUnitId: doc.currentUnitId,
+          preferredScript: doc.preferredScript,
+          learnerGender: doc.learnerGender,
+          dialect: doc.dialect,
+          heritageMode: doc.heritageMode,
+          uiLanguage: doc.uiLanguage,
         }
         try {
           localStorage.setItem(prefsKey(userId), JSON.stringify(backendPrefs))
@@ -209,7 +296,13 @@ export async function loadPreferences(
     }
   }
 
-  if (backendPrefs) return backendPrefs
+  if (backendPrefs) {
+    // Ensure locale cookie stays in sync with backend preference
+    if (backendPrefs.uiLanguage) {
+      setLocaleCookie(backendPrefs.uiLanguage)
+    }
+    return backendPrefs
+  }
   if (fromAccount) return fromAccount
 
   // Path 3: localStorage fallback
@@ -279,4 +372,75 @@ export async function loadMemoryLifelineFromAppwrite(
   userId: string
 ): Promise<{ memoryLifeline: string; userNote: string }> {
   return loadMemoryFromAppwrite(userId)
+}
+
+// ─── Structured Memory (new system) ─────────────────────────────────────────
+
+export { type StructuredMemory, type SessionEndInput } from './structured-memory'
+
+/**
+ * Load structured memory — tries localStorage first, then Appwrite.
+ * Returns memory + computed planner injection for the prompt.
+ */
+export function loadLocalStructuredMemory(userId: string | null): {
+  memory: StructuredMemory
+  plannerInjection: string
+} {
+  const memory = loadStructuredMemory(userId)
+  const plannerInjection = buildPlannerInjection(memory)
+  return { memory, plannerInjection }
+}
+
+/**
+ * Process a session end and save updated structured memory.
+ * Call this when endSession() is called — it updates vocab, errors, summaries.
+ */
+export function processAndSaveSessionEnd(
+  userId: string | null,
+  input: SessionEndInput
+): StructuredMemory {
+  const current = loadStructuredMemory(userId)
+  const updated = processSessionEnd(current, input)
+  saveStructuredMemory(userId, updated)
+  return updated
+}
+
+/**
+ * Update user note in structured memory.
+ */
+export function saveStructuredUserNote(userId: string | null, note: string): void {
+  const memory = loadStructuredMemory(userId)
+  const updated = updateUserNote(memory, note)
+  saveStructuredMemory(userId, updated)
+}
+
+/**
+ * Sync structured memory to Appwrite (fire-and-forget).
+ */
+export async function syncStructuredMemoryRemote(userId: string): Promise<void> {
+  const memory = loadStructuredMemory(userId)
+  await syncStructuredMemoryToAppwrite(userId, memory)
+}
+
+/**
+ * Load structured memory from Appwrite and merge with local.
+ * Remote wins for newer data (based on session count).
+ */
+export async function loadAndMergeStructuredMemory(
+  userId: string
+): Promise<{ memory: StructuredMemory; plannerInjection: string }> {
+  const local = loadStructuredMemory(userId)
+  const remote = await loadStructuredMemoryFromAppwrite(userId)
+
+  // Use whichever has more sessions (more complete data wins)
+  const winner = remote.sessions.length > local.sessions.length ? remote : local
+
+  // Merge user note: prefer non-empty
+  if (!winner.userNote && (local.userNote || remote.userNote)) {
+    winner.userNote = local.userNote || remote.userNote
+  }
+
+  saveStructuredMemory(userId, winner)
+  const plannerInjection = buildPlannerInjection(winner)
+  return { memory: winner, plannerInjection }
 }

@@ -26,12 +26,23 @@ export interface AccountPrefsPayload {
   currentUnitId?: string
   preferredScript?: 'native' | 'latin' | 'both'
   learnerGender?: 'masculine' | 'feminine'
+  dialect?: string
+  heritageMode?: boolean
+  uiLanguage?: string
   // Stripe subscription fields (written by webhook)
   stripeCustomerId?: string
   stripeSubscriptionId?: string
   // DodoPayments subscription fields (written by webhook)
   dodopaymentsCustomerId?: string
   dodopaymentsSubscriptionId?: string
+  // OAuth provider identity ids — used to recognise returning users (esp.
+  // Facebook accounts that sign up without an email).
+  googleSub?: string
+  facebookId?: string
+  // Canonical provider-agnostic subscription fields (legacy fields above mirror these)
+  subscriptionProvider?: 'stripe' | 'dodopayments'
+  providerCustomerId?: string
+  providerSubscriptionId?: string
   subscriptionStatus?: 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired' | 'unpaid'
   subscriptionPlan?: 'monthly' | 'yearly'
   subscriptionTrialEnd?: number
@@ -43,6 +54,8 @@ export interface AuthUser {
   id: string
   email: string
   name: string
+  /** The user's chosen display name — prefers accountPrefs.userName over account.name (which OAuth can overwrite). */
+  displayName: string
   emailVerification: boolean
   /** Appwrite Account Preferences — onboarding state mirror (cross-device, no permissions needed) */
   accountPrefs: AccountPrefsPayload
@@ -53,12 +66,14 @@ export interface AuthUser {
 export async function getSession(): Promise<AuthUser | null> {
   try {
     const user = await account.get()
+    const prefs = (user.prefs ?? {}) as AccountPrefsPayload
     return {
       id: user.$id,
       email: user.email,
       name: user.name,
+      displayName: prefs.userName || user.name,
       emailVerification: user.emailVerification,
-      accountPrefs: (user.prefs ?? {}) as AccountPrefsPayload,
+      accountPrefs: prefs,
     }
   } catch {
     return null
@@ -72,12 +87,14 @@ export async function signUp(email: string, password: string, name: string): Pro
   await account.createEmailPasswordSession(email, password)
   clearCachedJWT()
   const user = await account.get()
+  const prefs = (user.prefs ?? {}) as AccountPrefsPayload
   return {
     id: user.$id,
     email: user.email,
     name: user.name,
+    displayName: prefs.userName || user.name,
     emailVerification: user.emailVerification,
-    accountPrefs: (user.prefs ?? {}) as AccountPrefsPayload,
+    accountPrefs: prefs,
   }
 }
 
@@ -85,31 +102,43 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   await account.createEmailPasswordSession(email, password)
   clearCachedJWT()
   const user = await account.get()
+  const prefs = (user.prefs ?? {}) as AccountPrefsPayload
   return {
     id: user.$id,
     email: user.email,
     name: user.name,
+    displayName: prefs.userName || user.name,
     emailVerification: user.emailVerification,
-    accountPrefs: (user.prefs ?? {}) as AccountPrefsPayload,
+    accountPrefs: prefs,
   }
 }
 
 export async function signOut(): Promise<void> {
   clearCachedJWT()
-  await account.deleteSession('current')
+  try {
+    await account.deleteSession('current')
+  } catch (err: any) {
+    if (err?.code === 404) return
+    throw err
+  }
 }
 
 // ─── Update User Name ─────────────────────────────────────────────────────────
 
 export async function updateUserName(name: string): Promise<AuthUser> {
   await account.updateName(name)
+  // Also persist to accountPrefs.userName — this is the app's source of truth
+  // for display name, immune to OAuth provider overwrites.
+  await updateAccountPrefs({ userName: name })
   const user = await account.get()
+  const prefs = (user.prefs ?? {}) as AccountPrefsPayload
   return {
     id: user.$id,
     email: user.email,
     name: user.name,
+    displayName: prefs.userName || user.name,
     emailVerification: user.emailVerification,
-    accountPrefs: (user.prefs ?? {}) as AccountPrefsPayload,
+    accountPrefs: prefs,
   }
 }
 
@@ -135,6 +164,37 @@ export function signInWithGoogle(redirect?: string): void {
   const final = redirect && redirect !== '/' ? redirect : '/'
   const authUrl = `${origin}/api/auth/google?redirect=${encodeURIComponent(final)}`
   window.location.href = authUrl
+}
+
+// ─── Facebook OAuth ─────────────────────────────────────────────────────────
+
+export function signInWithFacebook(redirect?: string): void {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const final = redirect && redirect !== '/' ? redirect : '/'
+  const authUrl = `${origin}/api/auth/facebook?redirect=${encodeURIComponent(final)}`
+  window.location.href = authUrl
+}
+
+// ─── Profile completion (OAuth users) ───────────────────────────────────────
+
+/**
+ * Persist the user's display name and email. Used by the onboarding form to
+ * confirm / fill in details the OAuth provider may not have supplied (notably
+ * Facebook accounts without an email). Goes through the admin-backed
+ * /api/auth/profile route because OAuth accounts have no password and so can't
+ * use the client SDK's password-gated email update.
+ */
+export async function updateProfile(input: { name?: string; email?: string }): Promise<void> {
+  const { authFetch } = await import('../api/auth-fetch')
+  const res = await authFetch('/api/auth/profile', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data?.error || 'Could not save your profile.')
+  }
 }
 
 // ─── Password Recovery ────────────────────────────────────────────────────────

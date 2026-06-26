@@ -3,10 +3,14 @@
 /**
  * Paywall — shown when a free user needs to convert.
  *
- * Three options:
- *   - 5-Day Trial ($1 today, then $7.99/mo)
- *   - Monthly ($7.99/mo, no trial)
- *   - Yearly ($59.99/yr, save 37%)
+ * Three plans:
+ *   - 5-Day Trial ($1 today, then $7.99/mo)         — Stripe only
+ *   - Monthly ($7.99/mo, no trial)                  — Stripe or Dodo
+ *   - Yearly ($59.99/yr, save 37%)                  — Stripe or Dodo
+ *
+ * The plan is picked first, then the user chooses a payment method via
+ * `PaymentMethodPicker`, which smart-defaults to the provider/method
+ * best suited for their region (UPI for India, Link for the US, etc.).
  *
  * Yearly is preselected — best value, anchors the decision.
  */
@@ -15,9 +19,12 @@ import { useState } from 'react'
 import { cn } from '@talkingo/shared/utils'
 import {
   Sparkles, Check, Zap, MessageCircle, Phone, Users, Crown, AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
-import { authFetch } from '@/lib/api/auth-fetch'
 import { PUBLIC_PLAN_LIST, type PlanId } from '@/lib/subscription/public-plans'
+import { PaymentMethodPicker } from './PaymentMethodPicker'
+import { authFetch } from '@/lib/api/auth-fetch'
+import { saveSubscriptionInfo, type SubscriptionInfo } from '@/lib/subscription/use-subscription'
 
 interface PaywallProps {
   userEmail?: string
@@ -35,71 +42,45 @@ const FEATURES = [
   { icon: Crown, text: 'Full session recaps & history' },
 ]
 
-export function Paywall({ userEmail, onClose }: PaywallProps) {
+export function Paywall({ userId, onClose }: PaywallProps) {
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('yearly')
-  const [loading, setLoading] = useState(false)
-  const [redirecting, setRedirecting] = useState(false)
+  // Checkout is driven by PaymentMethodPicker (provider-agnostic
+  // /api/billing/checkout). The paywall just surfaces any error it reports.
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const handleSubscribe = async () => {
-    setLoading(true)
+  // "Already paid?" recovery — for users who completed payment but whose
+  // activation never reached us (missed webhook + interrupted return). Calls
+  // /api/billing/restore, which re-reads the live subscription from the provider
+  // and re-persists it. No new charge is ever created.
+  const [restoreState, setRestoreState] = useState<'idle' | 'loading' | 'none'>('idle')
+
+  const handleRestore = async () => {
+    setRestoreState('loading')
     setErrorMsg(null)
     try {
-      const res = await authFetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: selectedPlan, email: userEmail }),
-      })
-      const data = await res.json()
-      if (res.ok && data.url) {
-        setRedirecting(true)
-        window.location.href = data.url
+      const res = await authFetch('/api/billing/restore', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.restored) {
+        const info: SubscriptionInfo = {
+          status: data.status,
+          plan: data.plan,
+          customerId: data.customerId,
+          trialEndsAt: data.trialEndsAt,
+          currentPeriodEnd: data.currentPeriodEnd,
+          cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+          provider: data.provider,
+        }
+        saveSubscriptionInfo(info, userId)
+        // Reload so the app re-gates with the restored Premium access.
+        window.location.reload()
         return
       }
-      if (res.status === 409) {
-        setErrorMsg(data.message || 'You already have an active subscription.')
-      } else {
-        setErrorMsg('Could not start checkout. Please try again.')
-      }
-      setLoading(false)
-    } catch (err) {
-      console.error('[Paywall] Error:', err)
-      setErrorMsg('Connection issue. Check your network and try again.')
-      setLoading(false)
+      // Nothing live to restore.
+      setRestoreState('none')
+    } catch {
+      setErrorMsg('Could not check for an existing subscription. Please try again.')
+      setRestoreState('idle')
     }
-  }
-
-  const ctaLabel = (() => {
-    if (loading) return 'Redirecting...'
-    if (selectedPlan === 'trial') return 'Start trial — $1 for 5 days'
-    if (selectedPlan === 'yearly') return 'Subscribe yearly — $59.99'
-    return 'Subscribe monthly — $7.99'
-  })()
-
-  // Redirecting overlay — prevents interaction while browser navigates to Stripe
-  if (redirecting) {
-    return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/95 backdrop-blur-xl">
-        <div className="text-center space-y-4 animate-fade-in">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center mx-auto shadow-lg shadow-primary/25">
-            <Crown className="w-7 h-7 text-white animate-pulse" />
-          </div>
-          <div>
-            <h2 className="font-display text-xl font-bold text-foreground">Securing your checkout</h2>
-            <p className="text-sm text-muted-foreground mt-1">Redirecting to Stripe…</p>
-          </div>
-          <div className="flex justify-center gap-1">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="w-2 h-2 rounded-full bg-primary/60 animate-bounce"
-                style={{ animationDelay: `${i * 150}ms` }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -189,6 +170,14 @@ export function Paywall({ userEmail, onClose }: PaywallProps) {
           })}
         </div>
 
+        {/* Payment method picker — owns provider selection + checkout */}
+        {selectedPlan && (
+          <PaymentMethodPicker
+            selectedPlan={selectedPlan}
+            onError={setErrorMsg}
+          />
+        )}
+
         {/* Error message */}
         {errorMsg && (
           <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
@@ -196,15 +185,6 @@ export function Paywall({ userEmail, onClose }: PaywallProps) {
             <p className="text-xs text-red-700 dark:text-red-400">{errorMsg}</p>
           </div>
         )}
-
-        {/* CTA */}
-        <button
-          onClick={handleSubscribe}
-          disabled={loading}
-          className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary to-primary-glow text-white font-bold text-base shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {ctaLabel}
-        </button>
 
         {/* Optional dismiss */}
         {onClose && (
@@ -215,6 +195,23 @@ export function Paywall({ userEmail, onClose }: PaywallProps) {
             Maybe later
           </button>
         )}
+
+        {/* Already paid? Restore an existing subscription that didn't activate. */}
+        <div className="text-center">
+          <button
+            onClick={handleRestore}
+            disabled={restoreState === 'loading'}
+            className="inline-flex items-center gap-1.5 py-1.5 text-[11px] font-medium text-muted-foreground/80 hover:text-foreground transition-colors disabled:opacity-60"
+          >
+            {restoreState === 'loading' && <RefreshCw className="w-3 h-3 animate-spin" />}
+            {restoreState === 'loading' ? 'Checking your account…' : 'Already paid? Restore purchase'}
+          </button>
+          {restoreState === 'none' && (
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+              No active subscription found on your account. If you were just charged, wait a minute and try again.
+            </p>
+          )}
+        </div>
 
         {/* Fine print */}
         <p className="text-center text-[10px] text-muted-foreground/60 leading-relaxed px-2">

@@ -17,7 +17,7 @@ export interface RecordingResult {
   blob: Blob
 }
 
-export type RecorderState = 'idle' | 'calibrating' | 'listening' | 'recording' | 'processing'
+export type RecorderState = 'idle' | 'calibrating' | 'listening' | 'recording' | 'processing' | 'paused'
 
 export class AudioRecorder {
   private mediaRecorder: MediaRecorder | null = null
@@ -40,6 +40,7 @@ export class AudioRecorder {
   private onSilenceDetected?: () => void
   private onNoSpeech?: () => void
   private monitorInterval: ReturnType<typeof setTimeout> | null = null
+  private _pausedFromState: RecorderState | null = null
 
   constructor(options?: {
     onStateChange?: (state: RecorderState) => void
@@ -127,9 +128,19 @@ export class AudioRecorder {
 
   async stop(): Promise<RecordingResult> {
     return new Promise((resolve, reject) => {
-      if (!this.mediaRecorder || (this.state !== 'recording' && this.state !== 'listening')) {
+      if (!this.mediaRecorder || (this.state !== 'recording' && this.state !== 'listening' && this.state !== 'paused')) {
         reject(new Error('Not recording'))
         return
+      }
+
+      // If paused, resume first so we can properly stop
+      if (this.state === 'paused') {
+        if (this.stream) {
+          this.stream.getAudioTracks().forEach(t => { t.enabled = true })
+        }
+        if (this.mediaRecorder.state === 'paused') {
+          this.mediaRecorder.resume()
+        }
       }
 
       this._setState('processing')
@@ -174,11 +185,55 @@ export class AudioRecorder {
 
   cancel(): void {
     this._clearTimers()
-    if (this.mediaRecorder && (this.state === 'recording' || this.state === 'listening')) {
+    if (this.mediaRecorder && (this.state === 'recording' || this.state === 'listening' || this.state === 'paused')) {
+      if (this.mediaRecorder.state === 'paused') {
+        this.mediaRecorder.resume()
+      }
       this.mediaRecorder.stop()
     }
+    this._pausedFromState = null
     this._cleanup()
     this._setState('idle')
+  }
+
+  /**
+   * Pause recording without full teardown — keeps AudioContext and stream alive.
+   * Used by the audio pipeline coordinator to suspend mic during voice note playback.
+   */
+  pause(): void {
+    if (this.state !== 'recording' && this.state !== 'listening') return
+    this._pausedFromState = this.state
+    this._clearTimers()
+    // Pause the MediaRecorder if it's active
+    if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+      this.mediaRecorder.pause()
+    }
+    // Mute the mic tracks (keeps stream alive but stops audio input)
+    if (this.stream) {
+      this.stream.getAudioTracks().forEach(t => { t.enabled = false })
+    }
+    this._setState('paused')
+  }
+
+  /**
+   * Resume recording from paused state — re-enables mic tracks and monitoring.
+   */
+  resume(): void {
+    if (this.state !== 'paused') return
+    // Re-enable mic tracks
+    if (this.stream) {
+      this.stream.getAudioTracks().forEach(t => { t.enabled = true })
+    }
+    // Resume MediaRecorder if it was paused
+    if (this.mediaRecorder && this.mediaRecorder.state === 'paused') {
+      this.mediaRecorder.resume()
+    }
+    // Restore the state we paused from
+    const resumeState = this._pausedFromState || 'listening'
+    this._pausedFromState = null
+    this._setState(resumeState)
+    // Restart audio monitoring
+    this._startMonitoring()
   }
 
   // ── Private ─────────────────────────────────────────────────────────────

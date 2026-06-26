@@ -11,9 +11,6 @@
  * Each seed is language-agnostic — the AI executes it IN the target language.
  */
 
-export type { SkillDomain } from '../types'
-import type { SkillDomain } from '../types'
-
 // ─── New Curriculum System ───────────────────────────────────────────────
 
 export { type ConversationSeed } from './types'

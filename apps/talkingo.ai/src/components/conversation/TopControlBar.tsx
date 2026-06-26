@@ -2,14 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@talkingo/shared/utils'
-import { Settings, Bell, Moon, Sun, Monitor, LogOut, MessageSquare, Trash2, Clock, ChevronRight, X, Edit2, Check, Megaphone, Lightbulb, Trophy, AlertOctagon, Zap, PhoneOff, Volume2, VolumeX, MoreVertical, GraduationCap, MessageCircle, Phone, Target, Plane, Briefcase, Home as Home2, Theater as Theater2, BookOpen } from 'lucide-react'
+import { Settings, Bell, Moon, Sun, Monitor, LogOut, X, Edit2, Check, Megaphone, Lightbulb, Trophy, AlertOctagon, Zap, PhoneOff, Volume2, VolumeX, MoreVertical, GraduationCap, MessageCircle, Phone, Headphones, Radio, Target, Plane, Briefcase, Home as Home2, Theater as Theater2, BookOpen } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { TalkingoLogo } from '../ui/TalkingoLogo'
 import { AvatarSVG } from '../ui/AvatarSVG'
 import { AI_PERSONAS, getPersonaById } from '@talkingo/shared/gemini/personas'
 import type { PersonaId } from '@talkingo/shared/types'
 import { LANGUAGES } from '@talkingo/shared/languages'
-import { loadAllSessions, deleteSession as deleteSessionFromStorage, formatDuration as formatDur, formatSessionDate, type ChatSession } from '@/lib/storage/chat-sessions'
 import { loadSettings, saveSettings, type AppSettings } from '@/lib/storage/hybrid-storage'
 import { updateUserName } from '@/lib/auth/auth'
 import { authFetch } from '@/lib/api/auth-fetch'
@@ -60,7 +59,6 @@ interface TopControlBarProps {
   onInteractionModeChange?: (mode: 'manual' | 'handsfree' | 'native' | 'live') => void
   currentPersona?: PersonaId
   onPersonaChange?: (persona: PersonaId) => void
-  onViewHistory?: () => void
   /** Call duration in seconds - shown during active chat */
   callDuration?: number
   /** Callback to end the call */
@@ -95,8 +93,6 @@ interface TopControlBarProps {
   onOpenPhraseBank?: () => void
   /** Called when user opens settings drawer */
   onOpenSettings?: () => void
-  /** Called when user opens history drawer */
-  onOpenHistory?: () => void
 }
 
 export function TopControlBar({
@@ -116,14 +112,11 @@ export function TopControlBar({
   onReassess,
   onOpenPhraseBank,
   onOpenSettings,
-  onOpenHistory,
 }: TopControlBarProps) {
   const { user, signOut, refresh } = useAuth()
 
-  const [activePanel, setActivePanel] = useState<'settings' | 'notifications' | 'history' | null>(null)
+  const [activePanel, setActivePanel] = useState<'settings' | 'notifications' | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [conversations, setConversations] = useState<ChatSession[]>([])
-  const [selectedConversation, setSelectedConversation] = useState<ChatSession | null>(null)
   const [isEditingName, setIsEditingName] = useState(false)
   const [editName, setEditName] = useState('')
 
@@ -185,13 +178,6 @@ export function TopControlBar({
     setLocalInteractionMode(mode)
     onInteractionModeChange?.(mode)
   }
-
-  // Refresh conversations when history panel opens
-  useEffect(() => {
-    if (activePanel === 'history') {
-      setConversations(loadAllSessions(user?.id ?? null))
-    }
-  }, [activePanel, user?.id])
 
   // Fetch notifications - ONE TIME on mount, then only on manual refresh
   const fetchNotifications = useCallback(async (force: boolean = false) => {
@@ -315,16 +301,13 @@ export function TopControlBar({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isExpanded])
 
-  const handleTogglePanel = (panel: 'settings' | 'notifications' | 'history' | null) => {
+  const handleTogglePanel = (panel: 'settings' | 'notifications' | null) => {
     setActivePanel(activePanel === panel ? null : panel)
-    if (panel === 'history') {
-      setSelectedConversation(null)
-    }
   }
 
   // Handle name editing
   const handleStartEditName = () => {
-    setEditName(user?.name || '')
+    setEditName(user?.displayName || '')
     setIsEditingName(true)
   }
 
@@ -348,25 +331,6 @@ export function TopControlBar({
     }
   }
 
-  const handleDeleteConversation = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (deleteSessionFromStorage(user?.id ?? null, id)) {
-      setConversations(loadAllSessions(user?.id ?? null))
-      if (selectedConversation?.id === id) {
-        setSelectedConversation(null)
-      }
-    }
-  }
-
-  const handleViewConversation = (conv: ChatSession) => {
-    setSelectedConversation(conv)
-  }
-
-  const handleBackToList = () => {
-    setSelectedConversation(null)
-  }
-
-
   return (
     <div ref={containerRef} className="fixed top-3 left-1/2 -translate-x-1/2 z-50">
       {(isActive || isExpanded) && <div className="control-ambient-glow" />}
@@ -386,9 +350,25 @@ export function TopControlBar({
               <AvatarSVG personaId={currentPersona} size={32} />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold text-foreground leading-tight truncate">
-                {getPersonaById(currentPersona)?.name || 'AI Partner'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground leading-tight truncate">
+                  {getPersonaById(currentPersona)?.name || 'AI Partner'}
+                </span>
+                {/* In-session mode badge */}
+                {interactionMode && interactionMode !== 'live' && (
+                  <span className={cn(
+                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border shrink-0',
+                    interactionMode === 'manual' && 'bg-primary/10 border-primary/30 text-primary',
+                    interactionMode === 'handsfree' && 'bg-secondary/10 border-secondary/30 text-secondary',
+                    interactionMode === 'native' && 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+                  )}>
+                    {interactionMode === 'manual' && <MessageCircle className="w-2.5 h-2.5" />}
+                    {interactionMode === 'handsfree' && <Headphones className="w-2.5 h-2.5" />}
+                    {interactionMode === 'native' && <Radio className="w-2.5 h-2.5" />}
+                    {interactionMode === 'manual' ? 'Chat' : interactionMode === 'handsfree' ? 'Handsfree' : 'Native'}
+                  </span>
+                )}
+              </div>
               {lessonInfo ? (
                 <span className="text-[10px] text-secondary font-medium flex items-center gap-1 max-w-[140px]">
                   <GraduationCap className="w-3 h-3 flex-shrink-0" />
@@ -456,9 +436,6 @@ export function TopControlBar({
             </>
           ) : (
             <>
-              <NavIconBtn active={activePanel === 'history'} onClick={() => { onOpenHistory ? onOpenHistory() : handleTogglePanel('history') }} label="History">
-                <MessageSquare className="w-4 h-4" />
-              </NavIconBtn>
               {onOpenPhraseBank && (
                 <NavIconBtn active={false} onClick={onOpenPhraseBank} label="Phrase bank">
                   <BookOpen className="w-4 h-4" />

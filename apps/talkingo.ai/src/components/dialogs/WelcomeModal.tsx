@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { cn, talkingoLevelToLanguageLevel } from '@talkingo/shared/utils'
 import {
   Sparkles, ChevronRight, Globe, Target, User, Mic, Loader2, ArrowLeft, Send,
-  CheckCircle, AlertCircle, TrendingUp, Plane, Briefcase, Home, Theater, Type, UserCircle2, Volume2
+  CheckCircle, AlertCircle, TrendingUp, Plane, Briefcase, Home, Theater, Type, UserCircle2, Volume2, Mail
 } from 'lucide-react'
 import type {
   UserPreferences, PersonaId, TargetLanguage, LearningGoal,
@@ -14,6 +14,7 @@ import { LANGUAGES, getLanguageMeta, hasScriptOptions, getSupportedScripts, hasG
 import { getStartingSeedForLevel } from '@talkingo/shared/curriculum'
 import { getLevelByNumber } from '@talkingo/shared/levels'
 import { geminiClient, type MicErrorKind } from '@/lib/api/gemini-client'
+import { updateProfile } from '@/lib/auth/auth'
 import { TalkingoLogo } from '../ui/TalkingoLogo'
 
 interface WelcomeModalProps {
@@ -22,6 +23,14 @@ interface WelcomeModalProps {
   forceFullFlow?: boolean
   /** If true, skip directly to level assessment (for re-assessment from settings) */
   reassessmentMode?: boolean
+  /**
+   * The signed-in user's email. When defined (i.e. an authenticated user is
+   * onboarding), the setup step shows required name + email fields so we can
+   * confirm/fill details the OAuth provider may not have supplied. Pass an
+   * empty string for a user with no email (e.g. some Facebook signups).
+   * Leave undefined for anonymous onboarding to hide the email field.
+   */
+  initialEmail?: string
 }
 
 const GOAL_DEFAULTS: Record<LearningGoal, { topic: string; persona: PersonaId; correctionStyle: 'direct' | 'silent' }> = {
@@ -41,7 +50,7 @@ const LEARNING_GOALS = [
 
 const MAX_ONBOARDING_TURNS = 5
 
-export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode }: WelcomeModalProps) {
+export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode, initialEmail }: WelcomeModalProps) {
   const [isVisible, setIsVisible] = useState(false)
   // In reassessment mode, start at choice screen; otherwise start at setup
   const [step, setStep] = useState<'setup' | 'choice' | 'conversation' | 'analyzing' | 'results' | 'level-select'>(
@@ -51,14 +60,20 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
   // Step 1: setup
   const [targetLanguage, setTargetLanguage] = useState<TargetLanguage>(initialPreferences?.targetLanguage ?? 'en')
   const [nativeLanguage, setNativeLanguage] = useState<string>(initialPreferences?.nativeLanguage ?? '')
-  const [preferredScript, setPreferredScript] = useState<'native' | 'latin'>(
-    initialPreferences?.preferredScript === 'latin' ? 'latin' : 'native'
+  const [preferredScript, setPreferredScript] = useState<'native' | 'latin' | 'both'>(
+    initialPreferences?.preferredScript === 'latin' ? 'latin'
+      : initialPreferences?.preferredScript === 'both' ? 'both'
+      : 'native'
   )
   const [learnerGender, setLearnerGender] = useState<'masculine' | 'feminine' | undefined>(
     initialPreferences?.learnerGender
   )
   const [learningGoal, setLearningGoal] = useState<LearningGoal | null>(initialPreferences?.learningGoal ?? null)
   const [userName, setUserName] = useState(initialPreferences?.userName ?? '')
+  // Account email — only collected when an authenticated user is onboarding.
+  // Pre-filled from the OAuth provider when available; required when shown.
+  const collectProfile = initialEmail !== undefined
+  const [email, setEmail] = useState(initialEmail ?? '')
 
   // Step 2: onboarding conversation
   const [turns, setTurns] = useState<Array<{ role: 'user' | 'ai'; text: string }>>([])
@@ -96,7 +111,7 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
   // ── Start the onboarding conversation ──────────────────────────────────────
   const startConversation = useCallback(async () => {
     if (!learningGoal) return
-    geminiClient.setLanguage(targetLanguage)
+    geminiClient.setLanguage(targetLanguage, nativeLanguage, 1)
     setStep('conversation')
     setAssessmentError(null)
     setIsAiTyping(true)
@@ -222,6 +237,15 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
   }, [skipToLevel])
 
   const finish = (prefs: UserPreferences) => {
+    // Persist display name + email to the account (best-effort, non-blocking).
+    // Only when an authenticated user is onboarding. Identity is the Appwrite
+    // $id, so a failure here never blocks entering the app.
+    if (collectProfile) {
+      updateProfile({
+        name: userName.trim() || undefined,
+        email: email.trim() || undefined,
+      }).catch((e) => console.warn('[Onboarding] profile save failed:', e?.message))
+    }
     setIsVisible(false)
     setTimeout(() => onComplete(prefs), 250)
   }
@@ -294,7 +318,7 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
             <label className="flex items-center gap-2 text-sm font-medium mb-2">
               <Type className="w-4 h-4 text-primary" /> How would you like to read and write?
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setPreferredScript('native')}
@@ -308,6 +332,21 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
                 <span className="text-sm font-medium block mb-1">Native Script</span>
                 <span className="text-xs text-muted-foreground leading-tight">
                   Learn with {meta.native} characters
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreferredScript('both')}
+                className={cn(
+                  'text-left p-3 rounded-lg border transition-all',
+                  preferredScript === 'both'
+                    ? 'border-primary bg-primary/5 shadow-sm scale-[1.02]'
+                    : 'border-border/60 hover:border-border/80 hover:bg-muted/30'
+                )}
+              >
+                <span className="text-sm font-medium block mb-1">Both</span>
+                <span className="text-xs text-muted-foreground leading-tight">
+                  Native + romanized together
                 </span>
               </button>
               <button
@@ -423,7 +462,9 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
         <div>
           <label htmlFor="userName" className="flex items-center gap-2 text-sm font-medium mb-2">
             <User className="w-4 h-4 text-primary" /> What should I call you?{' '}
-            <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+            {!collectProfile && (
+              <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+            )}
           </label>
           <input
             id="userName" type="text" value={userName}
@@ -432,6 +473,24 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
             className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
+
+        {collectProfile && (
+          <div>
+            <label htmlFor="email" className="flex items-center gap-2 text-sm font-medium mb-2">
+              <Mail className="w-4 h-4 text-primary" /> Your email
+            </label>
+            <input
+              id="email" type="email" value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com" maxLength={254}
+              autoComplete="email"
+              className="w-full px-4 py-2.5 rounded-lg border border-border/60 bg-background/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {initialEmail ? 'Pulled from your account — edit it if you like.' : 'We use this to keep your account safe and reachable.'}
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="flex items-center gap-2 text-sm font-medium mb-2">
@@ -462,7 +521,11 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
       <div className="px-6 sm:px-8 pb-6 sm:pb-8 border-t border-border/20 bg-card/95 pt-4">
         <button
           onClick={() => setStep('choice')}
-          disabled={!learningGoal || (hasGrammaticalGender(targetLanguage) && !learnerGender)}
+          disabled={
+            !learningGoal ||
+            (hasGrammaticalGender(targetLanguage) && !learnerGender) ||
+            (collectProfile && (!userName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())))
+          }
           className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-primary to-primary-glow text-white font-medium text-sm hover:shadow-lg hover:shadow-primary/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           Continue <ChevronRight className="w-4 h-4" />
@@ -472,6 +535,9 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
           We&apos;ll have a 5-turn conversation in {meta.native} to find your level. No test — just talking.
           {hasScriptOptions(targetLanguage) && preferredScript === 'latin' && (
             <span className="block mt-1">Using Latin (romanized) script for easier reading.</span>
+          )}
+          {hasScriptOptions(targetLanguage) && preferredScript === 'both' && (
+            <span className="block mt-1">Using native script with romanized text alongside.</span>
           )}
           {hasGrammaticalGender(targetLanguage) && learnerGender && (
             <span className="block mt-1">
@@ -683,7 +749,7 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTurn(userInput) } }}
-              placeholder={preferredScript === 'latin' ? `Reply in ${meta.english} (use A-Z letters)…` : `Reply in ${meta.native}…`}
+              placeholder={preferredScript === 'latin' ? `Reply in ${meta.english} (use A-Z letters)…` : preferredScript === 'both' ? `Reply in ${meta.native} or A-Z letters…` : `Reply in ${meta.native}…`}
               dir={meta.direction}
               lang={meta.bcp47}
               disabled={isAiTyping}
@@ -703,7 +769,7 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
         <p className="text-[10px] text-muted-foreground/50 text-center mt-2">
           {isMicOnlyStep
             ? 'Speaking helps us assess your pronunciation too'
-            : `Answer ${preferredScript === 'latin' ? 'using A-Z letters (romanized)' : `in ${meta.native}`} — even a few words is fine`}
+            : `Answer ${preferredScript === 'latin' ? 'using A-Z letters (romanized)' : preferredScript === 'both' ? `in ${meta.native} (romanization shown alongside)` : `in ${meta.native}`} — even a few words is fine`}
         </p>
       </div>
     </div>
@@ -721,6 +787,9 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
           Analysing your {meta.native} across vocabulary, grammar, fluency, and listening.
           {hasScriptOptions(targetLanguage) && preferredScript === 'latin' && (
             <span className="block mt-1 text-xs">(Using romanized script)</span>
+          )}
+          {hasScriptOptions(targetLanguage) && preferredScript === 'both' && (
+            <span className="block mt-1 text-xs">(Native script + romanization)</span>
           )}
         </p>
       </div>
@@ -830,6 +899,9 @@ export function WelcomeModal({ onComplete, initialPreferences, reassessmentMode 
           What level are you in {meta.native}?
           {hasScriptOptions(targetLanguage) && preferredScript === 'latin' && (
             <span className="block mt-1 text-xs">(Using romanized script)</span>
+          )}
+          {hasScriptOptions(targetLanguage) && preferredScript === 'both' && (
+            <span className="block mt-1 text-xs">(Native script + romanization)</span>
           )}
         </p>
       </div>

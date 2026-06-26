@@ -1,69 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe/client'
-import { getSubscription } from '@/lib/appwrite-server'
-import { syncSubscriptionToAppwrite } from '@/lib/stripe/sync'
+/**
+ * DEPRECATED thin shim → POST /api/billing/cancel.
+ *
+ * Kept for backward compatibility during the unified-payments rollout. The
+ * unified route is already provider-agnostic: it resolves the provider from the
+ * caller's stored subscription (which is Stripe for these legacy callers) and
+ * delegates to `provider.cancel(...)`. No Stripe SDK logic remains here (Req 1.4).
+ *
+ * New clients should call `/api/billing/cancel` directly.
+ */
+export { POST } from '@/app/api/billing/cancel/route'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-/**
- * POST /api/stripe/cancel
- *
- * Cancels the authenticated user's subscription at period end.
- * They keep access until `currentPeriodEnd`, then it expires.
- *
- * Idempotent — if the subscription is already set to cancel, just refreshes state.
- */
-
-export async function POST(req: NextRequest) {
-  try {
-    const { verifyAuth, checkRateLimit, validateOrigin } = await import('@/lib/api/auth-guard')
-
-    if (!validateOrigin(req)) {
-      return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
-    }
-
-    const auth = await verifyAuth(req)
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    const { userId, jwt } = auth
-
-    const rl = checkRateLimit(`stripe:cancel:${userId}`, 5, 60_000)
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { error: 'rate_limited', message: 'Please wait before trying again.' },
-        { status: 429, headers: { 'Retry-After': '60' } }
-      )
-    }
-
-    const sub = await getSubscription(userId, jwt)
-    if (!sub || !sub.stripeSubscriptionId) {
-      return NextResponse.json(
-        { error: 'no_subscription', message: 'No active subscription to cancel.' },
-        { status: 404 }
-      )
-    }
-
-    const updated = await stripe.subscriptions.update(sub.stripeSubscriptionId, {
-      cancel_at_period_end: true,
-    })
-
-    await syncSubscriptionToAppwrite({
-      userId,
-      customerId: sub.stripeCustomerId!,
-      subscription: updated,
-    })
-
-    return NextResponse.json({
-      status: updated.status,
-      cancelAtPeriodEnd: true,
-      currentPeriodEnd: (updated as any).current_period_end
-        ? (updated as any).current_period_end * 1000
-        : null,
-    })
-  } catch (err: any) {
-    console.error('[stripe/cancel] Error:', err.message)
-    return NextResponse.json({ error: 'Failed to cancel subscription' }, { status: 500 })
-  }
-}

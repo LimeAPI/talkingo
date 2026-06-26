@@ -3,6 +3,7 @@
  */
 
 import type { GrammarTag } from './grammar-tags'
+import type { DialectVariant } from '../types'
 
 export interface ConversationSeed {
   /** Unique identifier: "{topic-family}-l{level}" e.g. "food-l01" */
@@ -29,6 +30,19 @@ export interface ConversationSeed {
   targetVocab: string[]
   /** Within-level difficulty: 'core' | 'practice' | 'challenge' */
   difficulty: 'core' | 'practice' | 'challenge'
+
+  /** Cultural context for locale-aware scenario generation */
+  culturalContext?: {
+    /** Region identifier (ISO 3166 alpha-2 or dialect code) */
+    region: string
+    /** Cultural category: 'food', 'family', 'market', 'celebration', 'business', 'social' */
+    category: string
+    /** Dialect constraint — if set, scenario uses this dialect's vocabulary */
+    dialectConstraint?: DialectVariant
+  }
+
+  /** Whether this seed is a Heritage Mode seed */
+  heritageMode?: boolean
 }
 
 export interface Scenario {

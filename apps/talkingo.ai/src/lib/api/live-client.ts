@@ -15,7 +15,7 @@
 
 import type { ConversationState } from '@talkingo/shared/types'
 import { getPersonaById } from '@talkingo/shared/gemini/personas'
-import { account } from './appwrite'
+import { getAuthJWT } from './auth-fetch'
 
 export type LiveStatus =
   | 'idle'
@@ -156,13 +156,21 @@ export class LiveCallService {
     // Support external WebSocket server (for Vercel deployment where WS isn't available on same origin)
     const externalWsUrl = process.env.NEXT_PUBLIC_LIVE_WS_URL
 
+    // In dev, the WS server runs on port 3001 alongside Turbopack on 3000.
+    // In production, server.ts bundles both on the same port.
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    const baseWsUrl = externalWsUrl
+      ? externalWsUrl
+      : isLocalhost
+        ? `ws://localhost:3001/api/gemini/live`
+        : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/gemini/live`
+
     // Get a fresh Appwrite JWT for WebSocket auth. WebSockets can't send custom
     // headers from the browser, so we pass the JWT as a query param. This is
     // the same auth pattern used by the rest of /api/* routes (X-Appwrite-JWT).
     let jwt = ''
     try {
-      const res = await account.createJWT()
-      jwt = res?.jwt ?? ''
+      jwt = await getAuthJWT() ?? ''
     } catch (err) {
       console.error('[live-client] Failed to mint JWT:', err)
       this._setStatus('error')
@@ -170,9 +178,6 @@ export class LiveCallService {
       throw new Error('Could not authenticate live session')
     }
 
-    const baseWsUrl = externalWsUrl
-      ? externalWsUrl
-      : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/gemini/live`
     const wsUrl = jwt ? `${baseWsUrl}?jwt=${encodeURIComponent(jwt)}` : baseWsUrl
 
     return new Promise((resolve, reject) => {

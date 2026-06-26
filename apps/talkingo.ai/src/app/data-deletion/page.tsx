@@ -9,11 +9,11 @@ export const metadata: Metadata = {
 
 export default function DataDeletionPage() {
   return (
-    <main className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
-      <header className="sticky top-0 z-50 border-b border-[hsl(var(--border))] backdrop-blur-xl bg-[hsl(var(--background)/0.7)]">
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/70 backdrop-blur-sm">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--primary-glow))] text-sm font-bold text-white">T</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold shadow-sm">T</span>
             <span className="text-base font-semibold tracking-tight">Talkingo</span>
           </Link>
         </div>
@@ -21,14 +21,14 @@ export default function DataDeletionPage() {
 
       <article className="mx-auto max-w-3xl px-6 py-12 md:py-20">
         <div className="mb-10">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--error)/0.1)] px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[hsl(var(--error))] mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full bg-error/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-error mb-4">
             <Trash2 size={12} /> Data Request
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">User Data Deletion</h1>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">Last updated: June 6, 2026</p>
+          <p className="mt-2 text-sm text-muted-foreground">Last updated: June 6, 2026</p>
         </div>
 
-        <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8 text-[hsl(var(--foreground))] leading-relaxed">
+        <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8 text-foreground leading-relaxed">
           <p>
             At <strong>Talkingo</strong>, we respect your right to control your personal data. This page
             explains how you can request deletion of your data from our platform. We comply with data
@@ -152,17 +152,17 @@ export default function DataDeletionPage() {
             <p className="mt-2">
               📧 <strong>privacy@talkingo.ai</strong>
             </p>
-            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+            <p className="mt-1 text-xs text-muted-foreground">
               Please allow up to 48 hours for a response. For urgent privacy concerns, include
               &ldquo;URGENT&rdquo; in the subject line.
             </p>
           </Section>
 
-          <div className="mt-12 pt-8 border-t border-[hsl(var(--border))] flex flex-wrap gap-4 text-sm">
-            <Link href="/privacy" className="text-[hsl(var(--primary))] hover:opacity-75 transition-opacity">
+          <div className="mt-12 pt-8 border-t border-border flex flex-wrap gap-4 text-sm">
+            <Link href="/privacy" className="text-accent hover:opacity-75 transition-opacity">
               Privacy Policy →
             </Link>
-            <Link href="/terms" className="text-[hsl(var(--primary))] hover:opacity-75 transition-opacity">
+            <Link href="/terms" className="text-accent hover:opacity-75 transition-opacity">
               Terms of Service →
             </Link>
           </div>
@@ -175,8 +175,8 @@ export default function DataDeletionPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-xl font-bold tracking-tight mb-3 text-[hsl(var(--foreground))]">{title}</h2>
-      <div className="text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">{children}</div>
+      <h2 className="text-xl font-bold tracking-tight mb-3 text-foreground">{title}</h2>
+      <div className="text-sm leading-relaxed text-muted-foreground">{children}</div>
     </section>
   )
 }
@@ -184,8 +184,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-3">
-      <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] mb-1">{title}</h3>
-      <div className="text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">{children}</div>
+      <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>
+      <div className="text-sm leading-relaxed text-muted-foreground">{children}</div>
     </div>
   )
 }

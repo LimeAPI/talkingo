@@ -1,21 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { cn } from '@talkingo/shared/utils'
-import { Clock, MessageSquare, CheckCircle2, Sparkles, PhoneOff } from 'lucide-react'
+import { Clock, MessageSquare, CheckCircle2, PhoneOff } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { formatDuration } from '@/lib/storage/chat-sessions'
-import type { VocabItem } from '@talkingo/shared/types'
 
 interface EndCallDialogProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: (saveTranscript: boolean, confirmedVocab?: VocabItem[]) => void
+  onConfirm: (saveTranscript: boolean) => void
   messageCount: number
   callDuration: number
   autoSaveEnabled: boolean
-  extractedVocab?: VocabItem[]
 }
 
 export function EndCallDialog({
@@ -25,26 +23,13 @@ export function EndCallDialog({
   messageCount,
   callDuration,
   autoSaveEnabled,
-  extractedVocab = [],
 }: EndCallDialogProps) {
   const [isConfirming, setIsConfirming] = useState(false)
-  const [confirmedVocab, setConfirmedVocab] = useState<VocabItem[]>([])
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsConfirming(false)
-      setConfirmedVocab(extractedVocab.map(v => ({ ...v })))
-    }
-  }, [isOpen, extractedVocab])
-
-  const toggleVocabItem = (index: number) => {
-    setConfirmedVocab(prev => prev.filter((_, i) => i !== index))
-  }
 
   const handleConfirm = () => {
     setIsConfirming(true)
     setTimeout(() => {
-      onConfirm(true, confirmedVocab)
+      onConfirm(true)
     }, 300)
   }
 
@@ -79,39 +64,6 @@ export function EndCallDialog({
             </div>
           </div>
 
-          {extractedVocab.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span>Words to Add to Your Profile</span>
-              </div>
-              <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                {extractedVocab.map((vocab, idx) => {
-                  const isKept = confirmedVocab.some(v => v.term === vocab.term)
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => toggleVocabItem(confirmedVocab.findIndex(v => v.term === vocab.term))}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:bg-muted/50 transition-colors group"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{vocab.term}</p>
-                        <p className="text-xs text-muted-foreground">{vocab.gloss}</p>
-                      </div>
-                      <CheckCircle2 className={cn(
-                        "w-5 h-5 transition-all",
-                        isKept ? "text-primary opacity-100" : "text-muted-foreground opacity-30"
-                      )} />
-                    </div>
-                  )
-                })}
-              </div>
-              <p className="text-[10px] text-muted-foreground text-center">
-                Tap a word to remove it from your learning profile.
-              </p>
-            </div>
-          )}
-
           <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/5 border border-primary/15">
             <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
             <p className="text-xs text-muted-foreground">
@@ -145,7 +97,7 @@ export function EndCallDialog({
             ) : (
               <>
                 <PhoneOff className="w-4 h-4 mr-2" />
-                End & Review
+                End & Save
               </>
             )}
           </Button>

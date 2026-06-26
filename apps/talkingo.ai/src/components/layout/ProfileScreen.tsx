@@ -17,6 +17,7 @@ import { Paywall } from '../paywall/Paywall'
 import { SubscriptionManager } from '../paywall/SubscriptionManager'
 import { AI_PERSONAS } from '@talkingo/shared/gemini/personas'
 import type { PersonaId } from '@talkingo/shared/types'
+import type { ScriptPreference } from '@talkingo/shared/types'
 import { LANGUAGES } from '@talkingo/shared/languages'
 import { updateUserName } from '@/lib/auth/auth'
 import { getLevelByNumber } from '@talkingo/shared/levels'
@@ -28,6 +29,14 @@ import {
   loadLocalUserNote,
   saveLocalUserNote,
 } from '@/lib/storage/learner-memory'
+import {
+  loadStructuredMemory,
+  saveStructuredMemory,
+  updateUserNote,
+  getMemoryStats,
+  type StructuredMemory,
+  type MemoryStats,
+} from '@/lib/storage/structured-memory'
 import { Brain, Plus, Trash2 } from 'lucide-react'
 
 interface ProfileScreenProps {
@@ -71,6 +80,10 @@ interface ProfileScreenProps {
   selectedChatVoice?: string
   onLiveVoiceChange?: (voice: string) => void
   onChatVoiceChange?: (voice: string) => void
+  /** Script preference toggle */
+  showScriptToggle?: boolean
+  effectiveScript?: ScriptPreference
+  onScriptChange?: (script: ScriptPreference) => void
   /** Optional constellation stats */
   streak?: number
   sessionCount?: number
@@ -85,6 +98,7 @@ export function ProfileScreen({
   learningPrefs, onLearningPrefsChange, onReassess,
   currentPersona = 'eli', onPersonaChange, selectedLiveVoice = 'Aoede', selectedChatVoice = '',
   onLiveVoiceChange = () => {}, onChatVoiceChange = () => {},
+  showScriptToggle, effectiveScript, onScriptChange,
   streak, sessionCount, totalHours,
 }: ProfileScreenProps) {
   const { user, signOut, refresh } = useAuth()
@@ -110,6 +124,10 @@ export function ProfileScreen({
   const [editingAiMemory, setEditingAiMemory] = useState(false)
   const [editAiMemoryText, setEditAiMemoryText] = useState('')
   const [showAiEditCaution, setShowAiEditCaution] = useState(false)
+
+  // ── Structured memory stats ──
+  const [memoryStats, setMemoryStats] = useState<MemoryStats | null>(null)
+  const [structuredMem, setStructuredMem] = useState<StructuredMemory | null>(null)
 
   // Paywall trigger from "Subscribe to Premium" button
   const [showPaywall, setShowPaywall] = useState(false)
@@ -202,6 +220,11 @@ export function ProfileScreen({
     const uid = user?.id ?? null
     setProfileMemoryLifeline(loadLocalLifeline(uid))
     setProfileUserNote(loadLocalUserNote(uid))
+
+    // Load structured memory stats
+    const mem = loadStructuredMemory(uid)
+    setStructuredMem(mem)
+    setMemoryStats(getMemoryStats(mem))
   }, [user?.id])
 
   const hasStats = streak !== undefined || sessionCount !== undefined || totalHours !== undefined
@@ -224,7 +247,7 @@ export function ProfileScreen({
               {/* Clean profile badge */}
               <div className="w-24 h-24 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center relative z-10">
                 <span className="text-4xl font-bold text-primary">
-                  {user.name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
+                  {user.displayName?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
                 </span>
               </div>
             </div>
@@ -247,14 +270,14 @@ export function ProfileScreen({
                   placeholder="Name"
                 />
               ) : (
-                <h1 className="font-display text-3xl italic tracking-wide">{user.name || 'User'}</h1>
+                <h1 className="font-display text-3xl italic tracking-wide">{user.displayName || 'User'}</h1>
               )}
               <button
                 onClick={() => {
                   if (isEditingName) {
                     handleSaveName()
                   } else {
-                    setEditName(user.name || '')
+                    setEditName(user.displayName || '')
                     setIsEditingName(true)
                   }
                 }}
@@ -266,7 +289,7 @@ export function ProfileScreen({
                 }
               </button>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
+            <p className="text-sm text-foreground/60 mt-1">{user.email}</p>
 
             {streak !== undefined && streak > 0 && (
               <div className="flex items-center gap-2 mt-3 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5">
@@ -288,7 +311,7 @@ export function ProfileScreen({
                 <div className="w-12 h-12 rounded-full bg-card/80 border border-primary/20 flex items-center justify-center glow-gold mb-2">
                   <span className="font-display text-xl text-primary">{streak ?? 0}</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Streak</span>
+                <span className="text-[10px] text-foreground/50 uppercase tracking-widest">Streak</span>
               </div>
 
               {/* Connector 1 */}
@@ -303,7 +326,7 @@ export function ProfileScreen({
                 <div className="w-12 h-12 rounded-full bg-card/80 border border-secondary/20 flex items-center justify-center glow-blue mb-2">
                   <span className="font-display text-xl text-secondary">{sessionCount ?? 0}</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Chats</span>
+                <span className="text-[10px] text-foreground/50 uppercase tracking-widest">Chats</span>
               </div>
 
               {/* Connector 2 */}
@@ -318,7 +341,7 @@ export function ProfileScreen({
                 <div className="w-12 h-12 rounded-full bg-card/80 border border-accent/20 flex items-center justify-center glow-lavender mb-2">
                   <span className="font-display text-lg text-accent">{totalHours ?? 0}h</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Time</span>
+                <span className="text-[10px] text-foreground/50 uppercase tracking-widest">Time</span>
               </div>
             </div>
           </section>
@@ -330,7 +353,7 @@ export function ProfileScreen({
         {learningPrefs && (
           <section className="surface-card p-6">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-8 h-8 rounded-full bg-primary/8 border border-primary/20 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center">
                 <Target className="w-4 h-4 text-primary" />
               </div>
               <h2 className="font-display text-2xl italic">Language</h2>
@@ -363,7 +386,7 @@ export function ProfileScreen({
                     <option key={l.code} value={l.code}>{l.english}</option>
                   ))}
                 </select>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-foreground/60 mt-1">
                   {Object.values(LANGUAGES).find(l => l.code === learningPrefs.nativeLanguage)?.english || 'Native'} speaker
                 </p>
               </div>
@@ -372,7 +395,7 @@ export function ProfileScreen({
             {/* Proficiency */}
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Proficiency</span>
+                <span className="text-sm text-foreground/60">Proficiency</span>
                 <span className="text-primary font-semibold">
                   Lv.{learningPrefs.talkingoLevel || 1} {getLevelByNumber(learningPrefs.talkingoLevel || 1).name}
                 </span>
@@ -383,7 +406,7 @@ export function ProfileScreen({
                   style={{ width: `${((learningPrefs.talkingoLevel || 1) / 12) * 100}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground/60">
+              <div className="flex justify-between text-[10px] text-foreground/40">
                 {[1, 4, 7, 10, 12].map((mark) => (
                   <span key={mark} className={cn(
                     (learningPrefs.talkingoLevel || 1) >= mark ? 'text-primary font-semibold' : ''
@@ -394,7 +417,7 @@ export function ProfileScreen({
 
             {/* Native language */}
             <div className="mt-5 pt-4 border-t border-border/20">
-              <span className="text-xs text-muted-foreground block mb-2">Native language</span>
+              <span className="text-xs text-foreground/60 block mb-2">Native language</span>
               <select
                 value={learningPrefs.nativeLanguage || ''}
                 onChange={(e) => onLearningPrefsChange?.({ nativeLanguage: e.target.value })}
@@ -409,7 +432,7 @@ export function ProfileScreen({
 
             {/* Goal */}
             <div className="mt-4 pt-4 border-t border-border/20">
-              <span className="text-xs text-muted-foreground block mb-2">Learning goal</span>
+              <span className="text-xs text-foreground/60 block mb-2">Learning goal</span>
               <div className="grid grid-cols-2 gap-2">
                 {([
                   { id: 'travel',     label: 'Travel',     Icon: Plane },
@@ -424,7 +447,7 @@ export function ProfileScreen({
                       'px-3 py-2.5 rounded-xl text-xs font-medium transition-all flex items-center gap-2',
                       learningPrefs.learningGoal === g.id
                         ? 'bg-primary/10 border border-primary/35 text-primary'
-                        : 'bg-card/80 border border-border/40 text-muted-foreground hover:border-border/60 hover:bg-card'
+                        : 'bg-card/80 border border-border/40 text-foreground/60 hover:border-border/60 hover:bg-card'
                     )}
                   >
                     <g.Icon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -438,7 +461,7 @@ export function ProfileScreen({
             <div className="mt-4 pt-4 border-t border-border/20 flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Direct corrections</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-[11px] text-foreground/60 mt-0.5">
                   {learningPrefs.correctionStyle === 'direct' ? 'AI corrects you explicitly' : 'AI uses natural recasts'}
                 </p>
               </div>
@@ -450,6 +473,38 @@ export function ProfileScreen({
                 <div className="toggle-switch-thumb-apple" />
               </button>
             </div>
+
+            {/* Script preference toggle — only shown for multi-script languages */}
+            {showScriptToggle && onScriptChange && effectiveScript && (
+              <div className="mt-4 pt-4 border-t border-border/20">
+                <span className="text-xs text-foreground/60 block mb-2">Script preference</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: 'native' as const, label: 'Native' },
+                    { value: 'both' as const, label: 'Both' },
+                    { value: 'latin' as const, label: 'Latin' },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => onScriptChange(opt.value)}
+                      className={cn(
+                        'px-3 py-2.5 rounded-xl text-xs font-medium transition-all text-center',
+                        effectiveScript === opt.value
+                          ? 'bg-primary/10 border border-primary/35 text-primary'
+                          : 'bg-card/80 border border-border/40 text-foreground/60 hover:border-border/60 hover:bg-card'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-foreground/40 mt-1.5">
+                  {effectiveScript === 'native' ? 'Messages shown in native script' :
+                   effectiveScript === 'latin' ? 'Messages shown in romanized text' :
+                   'Native script with romanization alongside'}
+                </p>
+              </div>
+            )}
 
             {onReassess && (
               <button
@@ -468,7 +523,7 @@ export function ProfileScreen({
             ═══════════════════════════════════════════════════════════ */}
         <section className="surface-card p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-full bg-secondary/8 border border-secondary/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-secondary/15 border border-secondary/30 flex items-center justify-center">
               <Volume2 className="w-4 h-4 text-secondary" />
             </div>
             <h2 className="font-display text-2xl italic">Audio</h2>
@@ -478,7 +533,7 @@ export function ProfileScreen({
             {/* Voice speed */}
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Voice Speed</span>
+                <span className="text-sm text-foreground/60">Voice Speed</span>
                 <span className="text-sm text-primary font-semibold">{voiceSpeed.toFixed(1)}×</span>
               </div>
               <input
@@ -495,7 +550,7 @@ export function ProfileScreen({
             {/* Mic sensitivity */}
             <div>
               <div className="flex justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Mic Sensitivity</span>
+                <span className="text-sm text-foreground/60">Mic Sensitivity</span>
                 <span className="text-sm text-primary font-semibold">{micSensitivity}%</span>
               </div>
               <input
@@ -512,7 +567,7 @@ export function ProfileScreen({
             <div className="flex items-center justify-between pt-4 border-t border-border/20">
               <div>
                 <p className="text-sm font-medium text-foreground">Noise cancellation</p>
-                <p className="text-xs text-muted-foreground">Filter background noise</p>
+                <p className="text-xs text-foreground/60">Filter background noise</p>
               </div>
               <button onClick={() => onNoiseCancellation(!noiseCancellation)}
                 className={cn('toggle-switch-apple', noiseCancellation && 'checked')}>
@@ -524,7 +579,7 @@ export function ProfileScreen({
             <div className="flex items-center justify-between pt-4 border-t border-border/20">
               <div>
                 <p className="text-sm font-medium text-foreground">Auto-play</p>
-                <p className="text-xs text-muted-foreground">Synthesize speech automatically</p>
+                <p className="text-xs text-foreground/60">Synthesize speech automatically</p>
               </div>
               <select
                 value={autoPlayVoiceNotes}
@@ -544,13 +599,13 @@ export function ProfileScreen({
             ═══════════════════════════════════════════════════════════ */}
         <section className="surface-card p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-full bg-primary/8 border border-primary/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center">
               <Phone className="w-4 h-4 text-primary" />
             </div>
             <h2 className="font-display text-2xl italic">Voice</h2>
           </div>
 
-          <p className="text-[10px] text-muted-foreground/60 leading-relaxed mb-4">
+          <p className="text-[10px] text-foreground/60 leading-relaxed mb-4">
             Each persona has a default voice. Pick a different one or tap ▶ to preview.
           </p>
 
@@ -601,7 +656,7 @@ export function ProfileScreen({
             ═══════════════════════════════════════════════════════════ */}
         <section className="surface-card p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-full bg-primary/8 border border-primary/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center">
               <MessageCircle className="w-4 h-4 text-primary" />
             </div>
             <h2 className="font-display text-2xl italic">Partners</h2>
@@ -634,7 +689,7 @@ export function ProfileScreen({
                   <p className={cn('font-semibold text-sm', selected ? 'text-primary' : 'text-foreground')}>
                     {persona.name}{!unlocked && ' 🔒'}
                   </p>
-                  <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2 mt-0.5 text-center">
+                  <p className="text-[10px] text-foreground/60 leading-snug line-clamp-2 mt-0.5 text-center">
                     {persona.description}
                   </p>
                   {selected && (
@@ -651,7 +706,7 @@ export function ProfileScreen({
             ═══════════════════════════════════════════════════════════ */}
         <section className="surface-card p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-full bg-accent/8 border border-accent/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center">
               <Monitor className="w-4 h-4 text-accent" />
             </div>
             <h2 className="font-display text-2xl italic">Appearance</h2>
@@ -672,7 +727,7 @@ export function ProfileScreen({
                     'w-9 h-8 rounded-lg flex items-center justify-center transition-all',
                     theme === value
                       ? 'bg-card shadow-sm text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                      : 'text-foreground/50 hover:text-foreground'
                   )}
                 >
                   <Icon className="w-4 h-4" />
@@ -687,7 +742,7 @@ export function ProfileScreen({
             ═══════════════════════════════════════════════════════════ */}
         <section className="surface-card p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-full bg-secondary/8 border border-secondary/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-secondary/15 border border-secondary/30 flex items-center justify-center">
               <Check className="w-4 h-4 text-secondary" />
             </div>
             <h2 className="font-display text-2xl italic">Data</h2>
@@ -697,7 +752,7 @@ export function ProfileScreen({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-foreground">Auto-save transcripts</p>
-                <p className="text-xs text-muted-foreground">Store conversation history</p>
+                <p className="text-xs text-foreground/60">Store conversation history</p>
               </div>
               <button onClick={() => onAutoSaveTranscripts(!autoSaveTranscripts)}
                 className={cn('toggle-switch-apple', autoSaveTranscripts && 'checked')}>
@@ -708,7 +763,7 @@ export function ProfileScreen({
             <div className="flex items-center justify-between pt-4 border-t border-border/20">
               <div>
                 <p className="text-sm font-medium text-foreground">AI corrections</p>
-                <p className="text-xs text-muted-foreground">Show fixes in transcript</p>
+                <p className="text-xs text-foreground/60">Show fixes in transcript</p>
               </div>
               <button onClick={() => onAiCorrections(!aiCorrections)}
                 className={cn('toggle-switch-apple', aiCorrections && 'checked')}>
@@ -724,11 +779,57 @@ export function ProfileScreen({
             ═══════════════════════════════════════════════════════════ */}
         <section className="surface-card p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-full bg-primary/8 border border-primary/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center">
               <Brain className="w-4 h-4 text-primary" />
             </div>
             <h2 className="font-display text-2xl italic">Memory</h2>
           </div>
+
+          {/* ── Structured Memory Stats (new) ── */}
+          {memoryStats && (memoryStats.totalVocab > 0 || memoryStats.totalErrors > 0 || memoryStats.sessionsTracked > 0) && (
+            <div className="mb-5 grid grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-center">
+                <p className="text-lg font-bold text-emerald-600">{memoryStats.totalVocab}</p>
+                <p className="text-[10px] text-foreground/50 uppercase tracking-wide">Words tracked</p>
+                {memoryStats.activeVocab > 0 && (
+                  <p className="text-[9px] text-emerald-500/70 mt-0.5">{memoryStats.activeVocab} active</p>
+                )}
+              </div>
+              <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-center">
+                <p className="text-lg font-bold text-amber-600">{memoryStats.totalErrors}</p>
+                <p className="text-[10px] text-foreground/50 uppercase tracking-wide">Patterns</p>
+                {memoryStats.dormantVocab > 0 && (
+                  <p className="text-[9px] text-amber-500/70 mt-0.5">{memoryStats.dormantVocab} to review</p>
+                )}
+              </div>
+              <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/15 text-center">
+                <p className="text-lg font-bold text-blue-600">{memoryStats.sessionsTracked}</p>
+                <p className="text-[10px] text-foreground/50 uppercase tracking-wide">Sessions</p>
+                {memoryStats.streakIndicator && (
+                  <p className="text-[9px] mt-0.5">{memoryStats.streakIndicator}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Top Error Patterns ── */}
+          {memoryStats && memoryStats.topErrors.length > 0 && (
+            <div className="mb-5 p-4 rounded-xl bg-amber-500/5 border border-amber-500/15">
+              <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-widest">Recurring patterns</span>
+              <div className="mt-2 space-y-1.5">
+                {memoryStats.topErrors.slice(0, 4).map((err, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-xs text-foreground/70 truncate max-w-[200px]">
+                      {err.pattern}
+                    </span>
+                    <span className="text-[10px] text-amber-600/60 font-medium ml-2 shrink-0">
+                      {err.frequency}×
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── AI's Memory (auto-generated, editable with caution) ── */}
           <div className="mb-5 p-4 rounded-xl bg-primary/5 border border-primary/15">
@@ -740,7 +841,7 @@ export function ProfileScreen({
               {!editingAiMemory && (
                 <button
                   onClick={() => setShowAiEditCaution(true)}
-                  className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:bg-muted/30 transition-all"
+                  className="w-6 h-6 rounded-lg flex items-center justify-center text-foreground/40 hover:text-foreground hover:bg-muted/30 transition-all"
                   aria-label="Edit AI memory"
                 >
                   <Edit2 className="w-3 h-3" />
@@ -758,7 +859,7 @@ export function ProfileScreen({
                 <div className="flex gap-2 justify-end">
                   <button
                     onClick={() => setShowAiEditCaution(false)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] text-muted-foreground hover:bg-muted/30 transition-all"
+                    className="px-2.5 py-1 rounded-lg text-[11px] text-foreground/60 hover:bg-muted/30 transition-all"
                   >
                     Cancel
                   </button>
@@ -790,7 +891,7 @@ export function ProfileScreen({
                       setEditingAiMemory(false)
                       setEditAiMemoryText('')
                     }}
-                    className="px-2.5 py-1 rounded-lg text-[11px] text-muted-foreground hover:bg-muted/30 transition-all"
+                    className="px-2.5 py-1 rounded-lg text-[11px] text-foreground/60 hover:bg-muted/30 transition-all"
                   >
                     Cancel
                   </button>
@@ -810,9 +911,9 @@ export function ProfileScreen({
               </div>
             ) : (
               profileMemoryLifeline ? (
-                <p className="text-xs text-muted-foreground leading-relaxed">{profileMemoryLifeline}</p>
+                <p className="text-xs text-foreground/60 leading-relaxed">{profileMemoryLifeline}</p>
               ) : (
-                <p className="text-[11px] text-muted-foreground/40 italic">
+                <p className="text-[11px] text-foreground/40 italic">
                   No memory yet. Start a conversation to generate the AI&apos;s first memory.
                 </p>
               )
@@ -822,8 +923,8 @@ export function ProfileScreen({
           {/* ── User Note (single text, editable) ── */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Your Note</span>
-              <span className="text-[10px] text-muted-foreground/40">{profileUserNote.length}/500</span>
+              <span className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">Your Note</span>
+              <span className="text-[10px] text-foreground/40">{profileUserNote.length}/500</span>
             </div>
             <textarea
               value={profileUserNote}
@@ -831,13 +932,13 @@ export function ProfileScreen({
               maxLength={500}
               rows={3}
               placeholder="Tell the AI something to remember about you…"
-              className="w-full bg-card border border-border/40 rounded-xl p-3 text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/40 resize-none"
+              className="w-full bg-card border border-border/40 rounded-xl p-3 text-xs placeholder:text-foreground/40 focus:outline-none focus:border-primary/40 resize-none"
             />
             {profileUserNote !== loadLocalUserNote(user?.id ?? null) && (
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => setProfileUserNote(loadLocalUserNote(user?.id ?? null))}
-                  className="px-2.5 py-1 rounded-lg text-[11px] text-muted-foreground hover:bg-muted/30 transition-all"
+                  className="px-2.5 py-1 rounded-lg text-[11px] text-foreground/60 hover:bg-muted/30 transition-all"
                 >
                   Reset
                 </button>
@@ -845,6 +946,12 @@ export function ProfileScreen({
                   onClick={() => {
                     const uid = user?.id ?? null
                     saveLocalUserNote(uid, profileUserNote)
+                    // Also update structured memory's userNote
+                    if (structuredMem) {
+                      const updated = updateUserNote(structuredMem, profileUserNote)
+                      saveStructuredMemory(uid, updated)
+                      setStructuredMem(updated)
+                    }
                   }}
                   className="px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[11px] font-medium text-primary hover:bg-primary/15 transition-all"
                 >
@@ -884,12 +991,12 @@ export function ProfileScreen({
                           Active
                         </span>
                       </div>
-                      <p className="text-muted-foreground text-sm mt-0.5">Unlimited neural pathways</p>
+                      <p className="text-foreground/60 text-sm mt-0.5">Unlimited neural pathways</p>
                     </>
                   ) : (
                     <>
                       <h3 className="font-display text-xl italic text-foreground">Free Plan</h3>
-                      <p className="text-muted-foreground text-sm mt-0.5">
+                      <p className="text-foreground/60 text-sm mt-0.5">
                         {getRemainingMessages(user.id)} messages remaining today
                       </p>
                     </>
@@ -1005,9 +1112,9 @@ function VoiceDropdown({
         <div className="flex items-center gap-2 min-w-0">
           {selected && <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', accentClasses.dot)} />}
           <span className="truncate text-foreground">{displayLabel}</span>
-          {selected?.badge && <span className="text-[9px] text-muted-foreground/50 flex-shrink-0">{selected.badge}</span>}
+          {selected?.badge && <span className="text-[9px] text-foreground/50 flex-shrink-0">{selected.badge}</span>}
         </div>
-        <ChevronDown className={cn('w-3 h-3 text-muted-foreground/50 transition-transform flex-shrink-0 ml-1', open && 'rotate-180')} />
+        <ChevronDown className={cn('w-3 h-3 text-foreground/50 transition-transform flex-shrink-0 ml-1', open && 'rotate-180')} />
       </button>
 
       {/* Dropdown menu */}
@@ -1040,7 +1147,7 @@ function VoiceDropdown({
                 className="flex-1 flex items-center gap-2 min-w-0 text-left"
               >
                 <span className="text-[11px] font-medium truncate">{opt.label}</span>
-                {opt.badge && <span className="text-[9px] text-muted-foreground/50">{opt.badge}</span>}
+                {opt.badge && <span className="text-[9px] text-foreground/50">{opt.badge}</span>}
               </button>
               {/* Play button */}
               <button
@@ -1049,7 +1156,7 @@ function VoiceDropdown({
                   'w-6 h-6 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ml-1',
                   previewingId === opt.id
                     ? `${accentClasses.active}`
-                    : 'text-muted-foreground/40 hover:text-foreground/70 hover:bg-muted/40'
+                    : 'text-foreground/40 hover:text-foreground/70 hover:bg-muted/40'
                 )}
                 aria-label={`Preview ${opt.label}`}
               >

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { cn } from '@talkingo/shared/utils'
 import { AlertTriangle, RefreshCw, WifiOff, Clock } from 'lucide-react'
 
@@ -60,8 +60,13 @@ export function ServiceErrorBanner({
   const [countdown, setCountdown] = useState(0)
   const [isRetrying, setIsRetrying] = useState(false)
   const [visible, setVisible] = useState(false)
+  const retryRef = useRef(onRetry)
 
   const config = error ? ERROR_CONFIG[error] : null
+
+  useEffect(() => {
+    retryRef.current = onRetry
+  }, [onRetry])
 
   // Animate in
   useEffect(() => {
@@ -84,7 +89,8 @@ export function ServiceErrorBanner({
       setCountdown(prev => {
         if (prev <= 1) {
           clearInterval(timer)
-          handleRetry()
+          setIsRetrying(true)
+          window.setTimeout(() => retryRef.current(), 0)
           return 0
         }
         return prev - 1

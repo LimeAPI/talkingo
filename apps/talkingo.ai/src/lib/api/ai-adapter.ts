@@ -5,6 +5,8 @@
  * Switch providers by changing NEXT_PUBLIC_AI_PROVIDER and AI_API_KEY in .env
  */
 
+import 'server-only'
+
 export type AIProvider = 'google' | 'openrouter' | 'openai'
 
 /** Default timeout for AI API calls (30 seconds) */

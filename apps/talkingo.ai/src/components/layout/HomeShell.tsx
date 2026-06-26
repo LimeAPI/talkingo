@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BottomNav, type HomeTab } from './BottomNav'
 import { DesktopTopNav } from './DesktopSidebar'
-import { TalkScreen } from './TalkScreen'
+import { TalkScreen, type LearningMode, type InputMethod } from './TalkScreen'
 import { LearnScreen } from './LearnScreen'
 import { HistoryScreen } from './HistoryScreen'
 import { ProfileScreen } from './ProfileScreen'
 import type {
   LanguageProgress, UserPreferences, TargetLanguage,
-  PersonaId,
+  PersonaId, ScriptPreference,
 } from '@talkingo/shared/types'
 
 interface HomeShellProps {
@@ -19,8 +19,10 @@ interface HomeShellProps {
   userName?: string
   userId: string | null
   onStartSession: (scenarioId: string, mode: 'continue' | 'new') => void
-  interactionMode: 'manual' | 'handsfree' | 'native' | 'live'
-  onInteractionModeChange: (mode: 'manual' | 'handsfree' | 'native' | 'live') => void
+  learningMode: LearningMode
+  inputMethod: InputMethod
+  onLearningModeChange: (mode: LearningMode) => void
+  onInputMethodChange: (method: InputMethod) => void
   onOpenPhraseBank: () => void
   onReassess: () => void
   /** Settings props */
@@ -56,8 +58,10 @@ interface HomeShellProps {
   /** Persona */
   currentPersona?: PersonaId
   onPersonaChange: (p: PersonaId) => void
-  /** Load a saved conversation into the chat view */
-  onLoadConversation?: (session: import('@/lib/storage/chat-sessions').ChatSession) => void
+  /** Script preference */
+  showScriptToggle?: boolean
+  effectiveScript?: ScriptPreference
+  onScriptChange?: (script: ScriptPreference) => void
 }
 
 export function HomeShell({
@@ -66,8 +70,10 @@ export function HomeShell({
   userName,
   userId,
   onStartSession,
-  interactionMode,
-  onInteractionModeChange,
+  learningMode,
+  inputMethod,
+  onLearningModeChange,
+  onInputMethodChange,
   onOpenPhraseBank,
   onReassess,
   settingsMicSensitivity,
@@ -88,7 +94,9 @@ export function HomeShell({
   onLearningPrefsChange,
   currentPersona,
   onPersonaChange,
-  onLoadConversation,
+  showScriptToggle,
+  effectiveScript,
+  onScriptChange,
 }: HomeShellProps) {
   const [activeTab, setActiveTab] = useState<HomeTab>('talk')
 
@@ -102,13 +110,6 @@ export function HomeShell({
 
       <div className="flex-1 flex flex-col min-w-0">
         <div className="relative flex-1 flex flex-col min-h-0">
-          {/* Stellar nebula background — deep space ambient glow */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-            <div className="ambient-orb ambient-orb-1" />
-            <div className="ambient-orb ambient-orb-2" />
-            <div className="ambient-orb ambient-orb-3" />
-          </div>
-
           {/* Tab content */}
           <div className="relative z-10 flex-1 min-h-0 flex flex-col md:pt-24">
             <AnimatePresence mode="wait">
@@ -127,8 +128,10 @@ export function HomeShell({
                 userName={userName}
                 userId={userId}
                 onStartSession={onStartSession}
-                interactionMode={interactionMode}
-                onInteractionModeChange={onInteractionModeChange}
+                learningMode={learningMode}
+                inputMethod={inputMethod}
+                onLearningModeChange={onLearningModeChange}
+                onInputMethodChange={onInputMethodChange}
                 onNavigateToLearn={() => setActiveTab('learn')}
               />
             )}
@@ -143,7 +146,7 @@ export function HomeShell({
               />
             )}
             {activeTab === 'history' && (
-              <HistoryScreen onLoadConversation={onLoadConversation} />
+              <HistoryScreen />
             )}
             {activeTab === 'profile' && (
               <ProfileScreen
@@ -166,6 +169,9 @@ export function HomeShell({
                 onReassess={onReassess}
                 currentPersona={currentPersona}
                 onPersonaChange={onPersonaChange}
+                showScriptToggle={showScriptToggle}
+                effectiveScript={effectiveScript}
+                onScriptChange={onScriptChange}
               />
             )}
               </motion.div>

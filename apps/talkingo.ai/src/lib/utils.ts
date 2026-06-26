@@ -1,6 +1,3 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+// Re-export from the canonical shared utility module.
+// All cn() usage should flow through @talkingo/shared/utils.
+export { cn } from '@talkingo/shared/utils'

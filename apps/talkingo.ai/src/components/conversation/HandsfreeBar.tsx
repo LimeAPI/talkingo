@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 
 interface HandsfreeBarProps {
+  /** 'handsfree' = standard hands-free, 'native' = full immersion (Gemini Live) */
+  mode: 'handsfree' | 'native'
   isListening: boolean
   isSpeaking: boolean
   isProcessing: boolean
@@ -42,6 +44,7 @@ function formatDuration(s: number) {
 }
 
 export function HandsfreeBar({
+  mode,
   isListening,
   isSpeaking,
   isProcessing,
@@ -131,34 +134,35 @@ export function HandsfreeBar({
   }
 
   // ── Status helpers ──
+  const isNative = mode === 'native'
   const stateLabel = isProcessing
     ? 'Thinking…'
     : isSpeaking
     ? 'Speaking…'
     : isListening
     ? 'Listening…'
-    : 'Hands-free'
+    : isNative ? 'Native Mode' : 'Hands-free'
 
   const stateColor = isProcessing
     ? 'text-amber-400'
     : isSpeaking
-    ? 'text-secondary'
+    ? (isNative ? 'text-amber-400' : 'text-secondary')
     : isListening
-    ? 'text-primary'
+    ? (isNative ? 'text-amber-500' : 'text-primary')
     : 'text-muted-foreground/60'
 
   const orbBorder = isProcessing
     ? 'border-amber-400/50 shadow-amber-400/20'
     : isSpeaking
-    ? 'border-secondary/50 shadow-secondary/20'
+    ? (isNative ? 'border-amber-400/50 shadow-amber-400/20' : 'border-secondary/50 shadow-secondary/20')
     : isListening
-    ? 'border-primary/50 shadow-primary/20'
+    ? (isNative ? 'border-amber-500/50 shadow-amber-500/20' : 'border-primary/50 shadow-primary/20')
     : 'border-border/40'
 
   const barBorder = isSpeaking
-    ? 'border-secondary/40 shadow-secondary/10'
+    ? (isNative ? 'border-amber-400/40 shadow-amber-400/10' : 'border-secondary/40 shadow-secondary/10')
     : isListening
-    ? 'border-primary/40 shadow-primary/10'
+    ? (isNative ? 'border-amber-500/40 shadow-amber-500/10' : 'border-primary/40 shadow-primary/10')
     : isProcessing
     ? 'border-amber-400/30 shadow-amber-400/10'
     : 'border-border/50'
@@ -247,9 +251,16 @@ export function HandsfreeBar({
             >
               {/* Status strip */}
               <div className="flex items-center justify-center gap-2 pt-3 pb-1.5">
+                {/* LIVE badge for native mode */}
+                {isNative && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-400 text-[9px] font-bold uppercase tracking-wider shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    Live
+                  </span>
+                )}
                 <span className={cn(
                   'w-1.5 h-1.5 rounded-full',
-                  isProcessing ? 'bg-amber-400' : isSpeaking ? 'bg-secondary' : isListening ? 'bg-primary' : 'bg-transparent',
+                  isProcessing ? 'bg-amber-400' : isSpeaking ? (isNative ? 'bg-amber-400' : 'bg-secondary') : isListening ? (isNative ? 'bg-amber-500' : 'bg-primary') : 'bg-transparent',
                   (isListening || isSpeaking || isProcessing) && 'animate-pulse'
                 )} />
                 <span className={cn('text-[11px] font-semibold tracking-wide', stateColor)}>
@@ -258,6 +269,13 @@ export function HandsfreeBar({
                 {callDuration > 0 && (
                   <span className="ml-1 text-[10px] font-mono text-muted-foreground/50 tabular-nums">
                     {formatDuration(callDuration)}
+                  </span>
+                )}
+                {/* Connection quality indicator for native mode */}
+                {isNative && (
+                  <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/5 border border-border/30" title="Connected">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                    <span className="text-[8px] text-muted-foreground/60 font-medium">OK</span>
                   </span>
                 )}
               </div>
@@ -295,26 +313,48 @@ export function HandsfreeBar({
                   {voiceNotesEnabled ? <AudioWaveform className="w-5 h-5" /> : <AudioLines className="w-5 h-5" />}
                 </button>
 
-                {/* Status orb — center, largest */}
-                <div
+                {/* Status orb — center, largest — interactive */}
+                <button
+                  onClick={() => {
+                    if (isSpeaking) onStopSpeaking()
+                    else if (isListening) onToggleMute()
+                  }}
+                  aria-label={
+                    isSpeaking ? 'Stop AI speaking'
+                    : isListening ? 'Mute microphone'
+                    : 'Status indicator'
+                  }
+                  title={
+                    isSpeaking ? 'Tap to stop AI' 
+                    : isListening ? 'Tap to mute' 
+                    : ''
+                  }
                   className={cn(
                     'w-[56px] h-[56px] rounded-full flex items-center justify-center border-2 shadow-lg transition-all duration-300',
                     orbBorder,
-                    isListening ? 'bg-primary/10' : isSpeaking ? 'bg-secondary/10' : isProcessing ? 'bg-amber-500/10' : 'bg-muted/20'
+                    isListening
+                      ? (isNative ? 'bg-amber-500/10' : 'bg-primary/10')
+                      : isSpeaking
+                      ? (isNative ? 'bg-amber-500/10' : 'bg-secondary/10')
+                      : isProcessing ? 'bg-amber-500/10' : 'bg-muted/20',
+                    (isListening || isSpeaking) && 'cursor-pointer hover:scale-105 active:scale-95'
                   )}
                 >
                   {isListening && (
-                    <span className="absolute w-[56px] h-[56px] rounded-full border-2 border-primary/25" />
+                    <span className={cn(
+                      'absolute w-[56px] h-[56px] rounded-full border-2',
+                      isNative ? 'border-amber-500/25' : 'border-primary/25'
+                    )} />
                   )}
                   {isProcessing
                     ? <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
                     : isSpeaking
-                    ? <Volume2 className="w-6 h-6 text-secondary animate-pulse" />
+                    ? <Volume2 className={cn('w-6 h-6 animate-pulse', isNative ? 'text-amber-400' : 'text-secondary')} />
                     : isListening
-                    ? <Mic className="w-6 h-6 text-primary animate-pulse" />
+                    ? <Mic className={cn('w-6 h-6 animate-pulse', isNative ? 'text-amber-500' : 'text-primary')} />
                     : <Mic className="w-6 h-6 text-muted-foreground/40" />
                   }
-                </div>
+                </button>
 
                 {/* Keyboard — expand to type */}
                 <button
@@ -338,7 +378,7 @@ export function HandsfreeBar({
               {/* Mode hint */}
               <div className="text-center pb-2.5">
                 <p className="text-[10px] text-muted-foreground/70 font-medium">
-                  Hands-free · M to mute · K to type
+                  {isNative ? 'Native mode · Speak naturally · M to mute' : 'Hands-free · M to mute · K to type'}
                 </p>
               </div>
             </div>

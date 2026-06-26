@@ -22,6 +22,8 @@ export function setAppwriteJWT(): void {
 
 export function clearAppwriteJWT(): void {
   if (typeof document === 'undefined') return
+  try { client.setJWT('') } catch {}
+  document.cookie = 'appwrite-jwt=; path=/; max-age=0; samesite=lax'
   document.cookie = 'appwrite-jwt=; path=/; max-age=0; secure; samesite=lax'
 }
 

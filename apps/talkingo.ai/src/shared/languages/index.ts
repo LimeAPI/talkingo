@@ -54,10 +54,32 @@ export const LANGUAGES: Record<TargetLanguage, LanguageMeta> = {
   // Middle East & Africa
   ar: { code: 'ar', bcp47: 'ar-EG', english: 'Arabic (Egypt)',        native: 'العربية',       script: 'non-latin', direction: 'rtl', sampleHello: 'مرحبًا! نتحدث؟', supportedScripts: ['native', 'latin'], hasGrammaticalGender: true },
   tr: { code: 'tr', bcp47: 'tr-TR', english: 'Turkish (Turkey)',      native: 'Türkçe',      script: 'latin',     direction: 'ltr', sampleHello: 'Merhaba! Sohbet edelim mi?' },
+
+  // Tier 1 additions
+  ur: { code: 'ur', bcp47: 'ur-PK', english: 'Urdu (Pakistan)',       native: 'اردو',          script: 'non-latin', direction: 'rtl', sampleHello: 'السلام علیکم! بات کریں؟', supportedScripts: ['native', 'latin'], hasGrammaticalGender: true },
+  pt: { code: 'pt', bcp47: 'pt-BR', english: 'Portuguese (Brazil)',   native: 'Português',   script: 'latin',     direction: 'ltr', sampleHello: 'Oi! Vamos conversar?', supportedScripts: ['native'], hasGrammaticalGender: true },
+  fa: { code: 'fa', bcp47: 'fa-IR', english: 'Persian (Iran)',        native: 'فارسی',         script: 'non-latin', direction: 'rtl', sampleHello: 'سلام! گفت‌وگو کنیم؟', supportedScripts: ['native', 'latin'], hasGrammaticalGender: false },
+  sw: { code: 'sw', bcp47: 'sw-TZ', english: 'Swahili (Tanzania)',    native: 'Kiswahili',   script: 'latin',     direction: 'ltr', sampleHello: 'Habari! Tuongee?', supportedScripts: ['native'], hasGrammaticalGender: false },
+  pa: { code: 'pa', bcp47: 'pa-IN', english: 'Punjabi (India)',       native: 'ਪੰਜਾਬੀ',        script: 'non-latin', direction: 'ltr', sampleHello: 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਗੱਲ ਕਰੀਏ?', supportedScripts: ['native', 'latin'], hasGrammaticalGender: true },
+
+  // Tier 2 additions
+  tl: { code: 'tl', bcp47: 'tl-PH', english: 'Filipino (Philippines)', native: 'Filipino',   script: 'latin',     direction: 'ltr', sampleHello: 'Kumusta! Mag-usap tayo?', supportedScripts: ['native'], hasGrammaticalGender: false },
+  hu: { code: 'hu', bcp47: 'hu-HU', english: 'Hungarian (Hungary)',   native: 'Magyar',      script: 'latin',     direction: 'ltr', sampleHello: 'Szia! Beszélgessünk?', supportedScripts: ['native'], hasGrammaticalGender: false },
+  el: { code: 'el', bcp47: 'el-GR', english: 'Greek (Greece)',        native: 'Ελληνικά',    script: 'non-latin', direction: 'ltr', sampleHello: 'Γεια! Να μιλήσουμε;', supportedScripts: ['native', 'latin'], hasGrammaticalGender: true },
+  he: { code: 'he', bcp47: 'he-IL', english: 'Hebrew (Israel)',       native: 'עברית',         script: 'non-latin', direction: 'rtl', sampleHello: 'שלום! נדבר?', supportedScripts: ['native', 'latin'], hasGrammaticalGender: true },
 }
 
-export function getLanguageMeta(code: TargetLanguage | undefined): LanguageMeta {
-  return LANGUAGES[code ?? 'en'] ?? LANGUAGES.en
+export function getLanguageMeta(code: string | undefined): LanguageMeta {
+  if (code === undefined || code === null) return LANGUAGES.en
+
+  // Check if the code is a valid TargetLanguage key (own property only, not prototype)
+  if (Object.prototype.hasOwnProperty.call(LANGUAGES, code)) {
+    return LANGUAGES[code as TargetLanguage]
+  }
+
+  // Unknown code — log warning and fall back to English
+  console.warn(`[Talkingo] Unknown language code "${code}" — falling back to English`)
+  return LANGUAGES.en
 }
 
 /** BCP-47 locale string used by SpeechRecognition.lang and Gemini TTS. */
@@ -86,4 +108,15 @@ export function getSupportedScripts(code: TargetLanguage | undefined): Array<'na
 export function hasGrammaticalGender(code: TargetLanguage | undefined): boolean {
   const meta = getLanguageMeta(code)
   return meta.hasGrammaticalGender ?? false
+}
+
+/** Resolve the effective script preference: defaults to 'native' when undefined */
+export function getEffectiveScriptPreference(
+  code: TargetLanguage | undefined,
+  preference: 'native' | 'latin' | 'both' | undefined
+): 'native' | 'latin' | 'both' {
+  // Single-script languages always use 'native'
+  if (!hasScriptOptions(code)) return 'native'
+  // Default to 'native' when preference is not set
+  return preference ?? 'native'
 }

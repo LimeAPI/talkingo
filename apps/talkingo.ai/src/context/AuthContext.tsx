@@ -40,11 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
     async function init() {
       setAppwriteJWT()
-      let session = await getSession()
-      if (!session && !cancelled) {
-        await new Promise((r) => setTimeout(r, 600))
-        session = await getSession()
-      }
+      const session = await getSession()
       if (!cancelled) {
         setUser(session)
         setLoading(false)
@@ -55,10 +51,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    await authSignOut()
-    clearAppwriteJWT()
-    setUser(null)
-    router.push('/login')
+    try {
+      await authSignOut()
+    } finally {
+      clearAppwriteJWT()
+      setUser(null)
+      router.push('/login')
+    }
   }, [router])
 
   return (

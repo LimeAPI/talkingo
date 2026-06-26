@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
 
     const googleUser = await userRes.json()
     const email = googleUser.email
+    const googleSub: string | undefined = googleUser.sub
     const name = googleUser.name || email.split('@')[0]
 
     if (!email) {
@@ -92,12 +93,27 @@ export async function GET(req: NextRequest) {
     const existing = await users.list([Query.equal('email', email)])
     if (existing.total > 0) {
       userId = existing.users[0].$id
-      await users.updateName(userId, name).catch(() => {})
+      // Do NOT overwrite account.name for existing users — the user may have
+      // set a custom display name via the app. OAuth provider names should only
+      // seed the initial account creation, not override user choices on every login.
     } else {
       const newUser = await users.create('unique()', email, undefined, undefined, name)
       userId = newUser.$id
     }
 
+    // Tag the account with the Google subject id (used by provider-id matching).
+    if (googleSub) {
+      try {
+        const current = await users.getPrefs(userId)
+        await users.updatePrefs(userId, { ...current, googleSub })
+      } catch (e) {
+        console.warn('[google-callback] could not persist googleSub pref:', (e as Error).message)
+      }
+    }
+
+    // Mint a server-side token/JWT for the user WITHOUT needing an existing
+    // session. `users.createSession(userId)` is not a valid admin-API call and
+    // throws — so we use createToken (preferred) and fall back to createJWT.
     let jwt: string
     try {
       const tokenResult = await (users as any).createToken(userId, 256, 3600)

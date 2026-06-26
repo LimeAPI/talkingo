@@ -3,7 +3,6 @@ import type {
   GeminiConversationResponse,
   GeminiOpenerResponse,
   GeminiAssessmentResponse,
-  VocabItem,
 } from '../types'
 
 function tryParseJson(raw: string): any {
@@ -54,40 +53,60 @@ function parseCorrections(raw: unknown, userText?: string): Correction[] {
 export function parseConversationResponse(raw: string, userText?: string): GeminiConversationResponse {
   const parsed = tryParseJson(raw) ?? {}
 
-  let teachingNote: GeminiConversationResponse['teachingNote'] = undefined
-  if (parsed.teachingNote && typeof parsed.teachingNote === 'object' && parsed.teachingNote.type && parsed.teachingNote.content) {
-    const validTypes = ['correction', 'expression', 'grammar', 'idiom', 'culture']
-    if (validTypes.includes(parsed.teachingNote.type)) {
-      teachingNote = {
-        type: parsed.teachingNote.type,
-        title: String(parsed.teachingNote.title || ''),
-        content: String(parsed.teachingNote.content || ''),
-      }
+  // Extract responseParts for multi-bubble delivery
+  let responseParts: string[] | undefined = undefined
+  if (Array.isArray(parsed.responseParts) && parsed.responseParts.length >= 2) {
+    const validParts = parsed.responseParts
+      .filter((p: unknown) => typeof p === 'string' && p.trim().length > 0)
+      .map((p: string) => p.trim())
+      .slice(0, 3) // Max 3 parts
+    if (validParts.length >= 2) {
+      responseParts = validParts
     }
   }
 
   return {
     aiResponse: parsed.response || raw || "Sorry, could you say that again?",
-    translation: typeof parsed.translation === 'string' ? parsed.translation : undefined,
     corrections: parseCorrections(parsed.corrections, userText),
-    vocab: Array.isArray(parsed.vocab) ? (parsed.vocab as VocabItem[]) : [],
-    emotion: typeof parsed.emotion === 'string' ? parsed.emotion : 'warm',
     unitComplete: parsed.unitComplete === true,
-    domainSignals: undefined,
-    teachingNote,
+    memoryUpdate: typeof parsed.memoryUpdate === 'string' && parsed.memoryUpdate.trim()
+      ? parsed.memoryUpdate.trim()
+      : undefined,
+    responseParts,
+  }
+}
+
+export interface GeminiAnalysisResponse {
+  normalizedTranscript?: string
+  corrections: Correction[]
+  memoryUpdate?: string
+}
+
+/**
+ * Parse the live voice-turn analysis response.
+ * No conversational reply — just corrections, an optional cleaned transcript,
+ * and an optional memory note.
+ */
+export function parseAnalysisResponse(raw: string, userText?: string): GeminiAnalysisResponse {
+  const parsed = tryParseJson(raw) ?? {}
+  const normalized = typeof parsed.normalizedTranscript === 'string' && parsed.normalizedTranscript.trim()
+    ? parsed.normalizedTranscript.trim()
+    : undefined
+  // If the transcript was normalized, corrections refer to the corrected text,
+  // so don't substring-filter against the (possibly wrong-language) original.
+  const filterText = normalized ? undefined : userText
+  return {
+    normalizedTranscript: normalized,
+    corrections: parseCorrections(parsed.corrections, filterText),
     memoryUpdate: typeof parsed.memoryUpdate === 'string' && parsed.memoryUpdate.trim()
       ? parsed.memoryUpdate.trim()
       : undefined,
   }
 }
 
-export function parseOpenerResponse(raw: string): GeminiOpenerResponse {
-  const parsed = tryParseJson(raw) ?? {}
+export function parseOpenerResponse(raw: string): GeminiOpenerResponse {  const parsed = tryParseJson(raw) ?? {}
   return {
     aiResponse: parsed.response || raw || 'Hi!',
-    translation: typeof parsed.translation === 'string' ? parsed.translation : undefined,
-    emotion: parsed.emotion || 'warm',
-    vocab: Array.isArray(parsed.vocab) ? (parsed.vocab as VocabItem[]) : [],
   }
 }
 

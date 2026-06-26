@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from 'next'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
+import { getDirection } from '@/i18n/request'
 import { AuthProvider } from '@/context/AuthContext'
 import { AppwritePing } from '@/components/ui/AppwritePing'
 import { StorageCleanup } from '@/components/ui/StorageCleanup'
 import { InstallPrompt, ServiceWorkerRegistration } from '@/components/pwa'
+import { PostHogProvider, Clarity } from '@/components/analytics'
 import './globals.css'
 import { cn } from "@/lib/utils";
 
@@ -46,13 +50,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const locale = await getLocale()
+  const messages = await getMessages()
+  const direction = getDirection(locale)
+
   return (
-    <html lang="en" suppressHydrationWarning className="font-sans">
+    <html lang={locale} dir={direction} suppressHydrationWarning className="font-sans">
       <head>
         {/* PWA splash screens for iOS */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -85,17 +93,23 @@ export default function RootLayout({
         <meta name="msapplication-tap-highlight" content="no" />
       </head>
       <body className="antialiased overscroll-none" suppressHydrationWarning>
-        <AuthProvider>
-          {/* Pings Appwrite on load to verify the connection */}
-          <AppwritePing />
-          {/* Runs localStorage cleanup on mount to prevent quota issues */}
-          <StorageCleanup />
-          {/* PWA service worker update handler */}
-          <ServiceWorkerRegistration />
-          {children}
-          {/* PWA install prompt (shows when browser triggers beforeinstallprompt) */}
-          <InstallPrompt />
-        </AuthProvider>
+        {/* Microsoft Clarity — session recordings & heatmaps */}
+        <Clarity />
+        <PostHogProvider>
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <AuthProvider>
+              {/* Pings Appwrite on load to verify the connection */}
+              <AppwritePing />
+              {/* Runs localStorage cleanup on mount to prevent quota issues */}
+              <StorageCleanup />
+              {/* PWA service worker update handler */}
+              <ServiceWorkerRegistration />
+              {children}
+              {/* PWA install prompt (shows when browser triggers beforeinstallprompt) */}
+              <InstallPrompt />
+            </AuthProvider>
+          </NextIntlClientProvider>
+        </PostHogProvider>
       </body>
     </html>
   )

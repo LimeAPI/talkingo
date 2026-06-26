@@ -5,6 +5,7 @@ import { cn } from '@talkingo/shared/utils'
 import { Sparkles, Loader2, Volume2, Copy, Check, Coffee, Users, Drama } from 'lucide-react'
 import type { TargetLanguage } from '@talkingo/shared/types'
 import { geminiClient } from '@/lib/api/gemini-client'
+import { getLanguageMeta } from '@talkingo/shared/languages'
 import { authFetch } from '@/lib/api/auth-fetch'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -34,14 +35,23 @@ export function NativeRewriteDialog({
     setLoading(true)
     setError(null)
     setAlternatives(null)
+    const targetName = getLanguageMeta(targetLanguage).english
+    // The user may type their phrase in ANY language (their native tongue, the
+    // target, or a mix). We want the answer ONLY in the target language —
+    // that's what they're here to learn.
+    const promptText = `A language learner wants to know how a native ${targetName} speaker would naturally express this: "${userPhrase}".${conversationContext ? ` Context: ${conversationContext}.` : ''}
+
+The phrase above may be written in any language — understand its meaning, then give three natural ${targetName} versions. ALL output must be in ${targetName} only (never in English or any other language).
+
+Return ONLY JSON with keys "casual", "natural", "expressive". Each value is the ${targetName} phrasing for that register.`
     // Direct fetch to chat API for native alternatives
     authFetch('/api/gemini/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         type: 'message',
-        userText: `How would a native speaker say "${userPhrase}" in ${conversationContext ? 'the context of ' + conversationContext : 'casual conversation'}? Give me three versions: casual, natural, and expressive. Return as JSON with keys casual, natural, expressive.`,
-        state: { talkingoLevel: 12, topic: 'general', correctionStyle: 'silent' },
+        userText: promptText,
+        state: { talkingoLevel: 12, topic: 'general', correctionStyle: 'silent', targetLanguage },
         history: []
       }),
     })

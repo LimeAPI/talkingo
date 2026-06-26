@@ -126,6 +126,10 @@ export interface SubscriptionDoc {
   dodopaymentsSubscriptionId?: string
   /** Which payment provider this subscription is with — 'stripe' | 'dodopayments' */
   provider?: string
+  /** Canonical provider-agnostic customer id (legacy *CustomerId fields mirror this) */
+  providerCustomerId?: string
+  /** Canonical provider-agnostic subscription id (legacy *SubscriptionId fields mirror this) */
+  providerSubscriptionId?: string
   status: string // 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired' | 'unpaid'
   plan: string   // 'monthly' | 'yearly'
   trialEnd?: number
@@ -208,7 +212,35 @@ export async function getSubscriptionByCustomerId(customerId: string): Promise<S
   const db = getAdminDatabases()
   try {
     const res = await db.listDocuments(APPWRITE_DB_ID, COLLECTION_IDS.SUBSCRIPTIONS, [
-      Query.equal('stripeCustomerId', customerId),
+      // Match either the legacy Stripe-specific field or the canonical
+      // provider-agnostic field, so attribution works regardless of which
+      // field a given row was written with.
+      Query.or([
+        Query.equal('stripeCustomerId', customerId),
+        Query.equal('providerCustomerId', customerId),
+      ]),
+      Query.limit(1),
+    ])
+    if (res.documents.length === 0) return null
+    return res.documents[0] as unknown as SubscriptionDoc
+  } catch {
+    return null
+  }
+}
+/**
+ * Look up a user by Dodo Payments customer id. Admin-only — used by webhook
+ * handlers when the Dodo event payload doesn't contain our metadata.userId.
+ */
+export async function getSubscriptionByDodoCustomerId(customerId: string): Promise<SubscriptionDoc | null> {
+  const db = getAdminDatabases()
+  try {
+    const res = await db.listDocuments(APPWRITE_DB_ID, COLLECTION_IDS.SUBSCRIPTIONS, [
+      // Match either the legacy Dodo-specific field or the canonical
+      // provider-agnostic field (see getSubscriptionByCustomerId).
+      Query.or([
+        Query.equal('dodopaymentsCustomerId', customerId),
+        Query.equal('providerCustomerId', customerId),
+      ]),
       Query.limit(1),
     ])
     if (res.documents.length === 0) return null
@@ -234,9 +266,18 @@ export async function updateUserPrefs(
 // ─── Webhook Idempotency (admin-only) ───────────────────────────────────────
 
 /**
- * Atomically claim a Stripe webhook event id. Returns true on first sight,
- * false on duplicates. Admin-only — the `stripe_webhook_events` collection
- * is server-only; users have no permissions on it.
+ * Atomically claim a webhook event id, namespaced as `${provider}:${rawId}`.
+ * Returns true on first sight, false on duplicates. Admin-only — the
+ * `stripe_webhook_events` collection is server-only; users have no permissions
+ * on it. The claim record is created with the collection's configured retention
+ * (≥30 days) so replays beyond the retry window still de-duplicate.
+ *
+ * Availability contract (Requirement 8.9): a *transient* store failure (network
+ * error, 5xx, etc.) is re-thrown so the caller can return a non-2xx response and
+ * let the provider retry — we must never silently treat an unknown failure as a
+ * successful claim and then mutate state. The only non-throwing degradation is a
+ * missing collection (404): idempotency is disabled with a warning rather than
+ * failing every webhook, since that is a setup issue, not a transient outage.
  */
 export async function claimWebhookEvent(eventId: string, eventType: string): Promise<boolean> {
   const db = getAdminDatabases()
@@ -257,8 +298,10 @@ export async function claimWebhookEvent(eventId: string, eventType: string): Pro
       )
       return true
     }
+    // Transient store unavailability — surface it so the webhook handler returns
+    // a non-2xx and the provider retries delivery (no state change in between).
     console.error('[appwrite-server] claimWebhookEvent error:', err)
-    return true
+    throw err
   }
 }
 

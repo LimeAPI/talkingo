@@ -57,4 +57,4 @@ export const STRIPE_PRICES = {
   get yearly() { return STRIPE_ENV.STRIPE_PRICE_YEARLY },
 } as const
 
-export const STRIPE_API_VERSION = '2025-01-27.acacia' as const
+export const STRIPE_API_VERSION = '2026-05-27.dahlia' as const

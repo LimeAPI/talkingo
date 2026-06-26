@@ -9,10 +9,11 @@ import { TopControlBar } from './TopControlBar'
 import { ServiceErrorBanner, type ServiceErrorType } from '../feedback/ServiceErrorBanner'
 import { EndCallDialog } from '../dialogs/EndCallDialog'
 import { HomeShell } from '../layout/HomeShell'
+import type { LearningMode, InputMethod } from '../layout/TalkScreen'
 import { SettingsDrawer } from '../layout/SettingsDrawer'
-import { HistoryDrawer } from '../layout/HistoryDrawer'
 import { NativeRewriteDialog } from '../dialogs/NativeRewriteDialog'
 import { PhraseBankDialog } from '../dialogs/PhraseBankDialog'
+import { SessionRecapDialog } from '../dialogs/SessionRecapDialog'
 import { MicErrorToast } from '../feedback/MicErrorToast'
 import { geminiClient, GeminiServiceError, type MicErrorKind } from '@/lib/api/gemini-client'
 import { createLiveCallService, type LiveCallService } from '@/lib/api/live-client'
@@ -23,6 +24,7 @@ import { UpgradePrompt, type UpgradeReason } from '../paywall/UpgradePrompt'
 import { FreeUsageBadge } from '../paywall/FreeUsageBadge'
 import { TrialCountdownBadge } from '../paywall/TrialCountdownBadge'
 import { PaymentSuccessDialog } from '../paywall/PaymentSuccessDialog'
+import { CheckoutReturnHandler } from '../paywall/CheckoutReturnHandler'
 import { CheckoutCancelledToast } from '../paywall/CheckoutCancelledToast'
 import { InfoToast } from '../paywall/InfoToast'
 import { CancellationBanner } from '../paywall/CancellationBanner'
@@ -42,9 +44,8 @@ import {
   createSession as createChatSession,
   updateSession as updateChatSession,
   endSession as endChatSession,
-  recoverActiveSession,
+  recoverActiveSessions,
   type SessionMode,
-  type ChatSession,
 } from '@/lib/storage/chat-sessions'
 import type {
   ConversationMessage,
@@ -52,12 +53,13 @@ import type {
   UserPreferences,
   PersonaId,
   Correction,
-  VocabItem,
   TargetLanguage,
   LanguageProgress,
 } from '@talkingo/shared/types'
 import { getPersonaById } from '@talkingo/shared/gemini/personas'
 import { getSeedById, getStartingSeedForLevel } from '@talkingo/shared/curriculum'
+import { getLevelByNumber } from '@talkingo/shared/levels'
+import { getLanguageMeta } from '@talkingo/shared/languages'
 import { markLessonComplete } from '@/lib/storage/lesson-progress'
 import {
   loadLocalLifeline,
@@ -67,8 +69,19 @@ import {
   syncMemoryToAppwrite,
   loadMemoryFromAppwrite,
 } from '@/lib/storage/learner-memory'
+import {
+  loadLocalStructuredMemory,
+  processAndSaveSessionEnd,
+  loadAndMergeStructuredMemory,
+  syncStructuredMemoryRemote,
+  saveStructuredUserNote,
+  type StructuredMemory,
+} from '@/lib/storage/hybrid-storage'
+import { buildPlannerInjection, buildMemoryInjection, getLevelUpSignal } from '@/lib/storage/structured-memory'
 import { useAuth } from '@/context/AuthContext'
+import { useScriptPreference } from '@/lib/hooks/use-script-preference'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { MicOff } from 'lucide-react'
 
 
 type View = 'loading' | 'welcome' | 'home' | 'in-call'
@@ -96,7 +109,37 @@ export function ConversationPage() {
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [conversationMode, setConversationMode] = useState<'manual' | 'handsfree' | 'native' | 'live'>('manual')
 
-  // Gated mode change — free users can only use 'manual' (chat)
+  // ── Script preference with revert-on-failure ───────────────────────────
+  const { effectiveScript, showScriptToggle, changeScript } = useScriptPreference({
+    preferences,
+    userId: user?.id ?? null,
+    isAuthenticated: !!user,
+    setPreferences: (p) => {
+      setPreferences(p)
+      // Update conversation state so rendered messages use the new script immediately
+      const newState = stateFromPrefs(p, user?.displayName)
+      setConversationState(newState)
+    },
+  })
+
+  // ── New mode system: learning mode + input method ──────────────────────
+  const [learningMode, setLearningMode] = useState<'free' | 'practice'>('free')
+  const [inputMethod, setInputMethod] = useState<'voice' | 'text'>('text')
+
+  // Sync inputMethod → internal conversationMode for backwards compat
+  useEffect(() => {
+    setConversationMode(inputMethod === 'voice' ? 'live' : 'manual')
+  }, [inputMethod])
+
+  const handleLearningModeChange = useCallback((mode: 'free' | 'practice') => {
+    setLearningMode(mode)
+  }, [])
+
+  const handleInputMethodChange = useCallback((method: 'voice' | 'text') => {
+    setInputMethod(method)
+  }, [])
+
+  // Legacy gated mode change — kept for internal use
   const handleModeChange = useCallback((mode: 'manual' | 'handsfree' | 'native' | 'live') => {
     if (!isSubscribed(user?.id) && !isModeAllowed(mode)) {
       setUpgradeReason('mode')
@@ -109,22 +152,28 @@ export function ConversationPage() {
   const [isSpeakerMuted, setIsSpeakerMuted] = useState(false)
   const [serviceError, setServiceError] = useState<ServiceErrorType | null>(null)
   const [showEndCallDialog, setShowEndCallDialog] = useState(false)
+  // ── Session recap (shown after a call ends) ──────────────────────────────
+  const [recapData, setRecapData] = useState<{
+    corrections: Correction[]
+    durationSeconds: number
+    levelUp: { fromLevel: number; toLevel: number; toLevelName: string } | null
+  } | null>(null)
   const currentScenarioRef = useRef<string | null>(null)
   const [callDuration, setCallDuration] = useState(0)
 
   // ── Auto-save session tracking ──────────────────────────────────────────
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const messagesRef = useRef<ConversationMessage[]>([]) // Always-current ref for saves
 
   // ── Learning system ────────────────────────────────────────────────
 
   // Session-only collected data for recap
   const [sessionCorrections, setSessionCorrections] = useState<Correction[]>([])
-  const [sessionVocab, setSessionVocab] = useState<VocabItem[]>([])
-  /** Rolling correction count for last 5 AI turns — used for adaptive hint injection */
-  const recentCorrectionCountsRef = useRef<number[]>([]) // last 5 turn correction counts
-  /** LiveCallService instance for native mode (Gemini Live API with chat bubbles) */
+  const recentCorrectionCountsRef = useRef<number[]>([])
   const nativeServiceRef = useRef<LiveCallService | null>(null)
+  /** Tracks the in-progress live/native transcript turn so we can merge text
+   *  and analyze the COMPLETE utterance (not just the last streamed chunk). */
+  const nativeTurnRef = useRef<{ id: string; text: string; isUser: boolean } | null>(null)
 
   // ── Cross-session memory ───────────────────────────────────────────
   const [memoryLifeline, setMemoryLifeline] = useState<string>('')
@@ -132,6 +181,10 @@ export function ConversationPage() {
   const turnCountRef = useRef(0)
   const lastSavedMemoryRef = useRef<string>('') // avoid redundant Appwrite writes
   const memorySyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── Structured memory (Practice Planner) ────────────────────────────
+  const structuredMemoryRef = useRef<StructuredMemory | null>(null)
+  const [plannerInjection, setPlannerInjection] = useState<string>('')
 
   /** Shared helper — called by audio & text paths to avoid duplicate logic. */
   function captureMemoryUpdate(text: string | undefined): void {
@@ -149,10 +202,10 @@ export function ConversationPage() {
     }
   }
 
-  // Recap dialog state — removed (no more AI-generated session recaps)
-
   // Mic error toast
   const [micError, setMicError] = useState<{ kind: MicErrorKind; detail?: string } | null>(null)
+  // Mic paused due to inactivity
+  const [showMicPausedToast, setShowMicPausedToast] = useState(false)
 
   // Native rewrite dialog ("Say it like a native")
   const [rewriteDialog, setRewriteDialog] = useState<{ phrase: string; context?: string } | null>(null)
@@ -177,6 +230,9 @@ export function ConversationPage() {
   } | null>(null)
   const [showCheckoutCancelledToast, setShowCheckoutCancelledToast] = useState(false)
   const [showBillingUpdatedToast, setShowBillingUpdatedToast] = useState(false)
+  // Unified provider-agnostic checkout return (`?provider=&status=success&session_id=`).
+  // When present we hand the confirmation flow to <CheckoutReturnHandler/>.
+  const [showCheckoutReturn, setShowCheckoutReturn] = useState(false)
 
   // Sync subscription state once user is loaded
   useEffect(() => {
@@ -192,6 +248,20 @@ export function ConversationPage() {
 
     const params = new URLSearchParams(window.location.search)
     const userId = user.id
+
+    // ── Unified provider-agnostic return (`?provider=&status=success&...`) ──
+    // Both Stripe and DodoPayments now redirect here. Hand the confirmation
+    // (sync-checkout + status polling) to <CheckoutReturnHandler/>, which owns
+    // the retry/backoff + persistence. We optimistically flip the UI and let
+    // the handler clean the URL once it reaches a terminal state. The legacy
+    // `?subscription=success` path below stays for backward compatibility.
+    if (params.get('status') === 'success' && params.get('provider')) {
+      saveSubscriptionInfo({ status: 'trialing', plan: 'monthly' }, userId)
+      setIsSubscribedCheck(true)
+      setShowedPaywall(true)
+      setShowCheckoutReturn(true)
+      return
+    }
 
     // Successful checkout return — authoritative sync via Stripe
     if (params.get('subscription') === 'success') {
@@ -315,16 +385,18 @@ export function ConversationPage() {
   useEffect(() => {
     if (!user?.id || !user?.accountPrefs) return
     const prefs = user.accountPrefs
-    if (prefs.stripeCustomerId) {
+    // Canonical-first, legacy-fallback customer id (14.1).
+    const hasCustomer =
+      prefs.providerCustomerId || prefs.stripeCustomerId || prefs.dodopaymentsCustomerId
+    if (hasCustomer) {
       const synced = syncFromAccountPrefs(prefs, user.id)
       const active = synced.status === 'active' || synced.status === 'trialing'
       setIsSubscribedCheck(active)
     }
   }, [user?.id, user?.accountPrefs])
 
-  // Settings & history drawers
+  // Settings drawer
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [historyOpen, setHistoryOpen] = useState(false)
 
   // Settings state (lifted from TopControlBar so SettingsDrawer can use them)
   const [settingsMicSensitivity, setSettingsMicSensitivity] = useState(75)
@@ -354,6 +426,16 @@ export function ConversationPage() {
   const isSpeakingRef = useRef(isSpeaking)
   const isProcessingRef = useRef(false)
   const viewRef = useRef<View>(view)
+
+  // ── Audio Pipeline Coordinator ─────────────────────────────────────────────
+  // Lightweight state tracker ensuring mic and playback never overlap.
+  // States: idle | recording | playing
+  type PipelineState = 'idle' | 'recording' | 'playing'
+  const pipelineStateRef = useRef<PipelineState>('idle')
+  /** True when user has explicitly tapped the mute button (vs pipeline-paused) */
+  const userManuallyMutedRef = useRef(false)
+  /** True when mic was paused by the pipeline coordinator (not user action) */
+  const pipelinePausedRef = useRef(false)
 
   useEffect(() => { stateRef.current = conversationState }, [conversationState])
   useEffect(() => { conversationModeRef.current = conversationMode }, [conversationMode])
@@ -431,33 +513,55 @@ export function ConversationPage() {
         }
 
         setPreferences(prefs)
-        const newState: ConversationState = stateFromPrefs(prefs, user?.name)
+        const newState: ConversationState = stateFromPrefs(prefs, user?.displayName)
         setConversationState(newState)
         stateRef.current = newState
-        geminiClient.setLanguage(prefs.targetLanguage)
+        geminiClient.setLanguage(prefs.targetLanguage, prefs.nativeLanguage, prefs.talkingoLevel)
 
         setView('home')
 
         // ── Load cross-session memory (fire-and-forget) ────────────────
         if (!cancelled) {
           const loadMem = async () => {
+            // Load structured memory first (new system)
+            const { memory: localStructured, plannerInjection: localInjection } =
+              loadLocalStructuredMemory(user?.id ?? null)
+            structuredMemoryRef.current = localStructured
+            setPlannerInjection(localInjection)
+
+            // Legacy: still load lifeline for backward compat during migration
             const localMem = loadLocalLifeline(user?.id ?? null)
             const localNote = loadLocalUserNote(user?.id ?? null)
             setMemoryLifeline(localMem)
-            setUserNote(localNote)
+            setUserNote(localNote || localStructured.userNote)
             lastSavedMemoryRef.current = localMem
 
             // Try to load from Appwrite (may update local cache)
             if (user?.id) {
-              const remote = await loadMemoryFromAppwrite(user.id)
-              if (remote.memoryLifeline && !localMem) {
-                setMemoryLifeline(remote.memoryLifeline)
-                saveLocalLifeline(user.id, remote.memoryLifeline)
-                lastSavedMemoryRef.current = remote.memoryLifeline
+              try {
+                const { memory: remoteMem, plannerInjection: remoteInjection } =
+                  await loadAndMergeStructuredMemory(user.id)
+                structuredMemoryRef.current = remoteMem
+                setPlannerInjection(remoteInjection)
+                if (remoteMem.userNote) {
+                  setUserNote(remoteMem.userNote)
+                }
+              } catch {
+                // Non-critical — local data is fine
               }
-              if (remote.userNote) {
-                setUserNote(remote.userNote)
-                saveLocalUserNote(user.id, remote.userNote)
+
+              // Legacy fallback: still sync old-style if no structured data
+              if (!localStructured.sessions.length) {
+                const remote = await loadMemoryFromAppwrite(user.id)
+                if (remote.memoryLifeline && !localMem) {
+                  setMemoryLifeline(remote.memoryLifeline)
+                  saveLocalLifeline(user.id, remote.memoryLifeline)
+                  lastSavedMemoryRef.current = remote.memoryLifeline
+                }
+                if (remote.userNote) {
+                  setUserNote(remote.userNote)
+                  saveLocalUserNote(user.id, remote.userNote)
+                }
               }
             }
           }
@@ -466,8 +570,8 @@ export function ConversationPage() {
 
         // ── Warmup: pre-fetch opener in background so "Free Talk" feels instant ──
         if (!cancelled) {
-          const warmupState = stateFromPrefs(prefs, user?.name)
-          geminiClient.generateOpener(warmupState, user?.name)
+          const warmupState = stateFromPrefs(prefs, user?.displayName)
+          geminiClient.generateOpener(warmupState, user?.displayName)
             .then((res) => { if (!cancelled) warmupOpenerRef.current = res })
             .catch(() => {}) // silent — warmup is best-effort
         }
@@ -516,60 +620,73 @@ export function ConversationPage() {
     }
   }, [])
 
-  // ── Auto-save: persist messages to chat-sessions on every change (debounced) ──
+  // ── Immediate auto-save: persist messages on every change (no debounce) ──
+  // messagesRef always holds the current messages for the unload safety net.
   useEffect(() => {
-    if (!settingsAutoSave) return
+    messagesRef.current = messages
+  }, [messages])
+
+  useEffect(() => {
     if (!activeSessionId) return
     if (messages.length === 0) return
 
-    // Debounce: wait 300ms after last message change before writing
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
-    autoSaveTimerRef.current = setTimeout(() => {
-      updateChatSession(
-        user?.id ?? null,
-        activeSessionId,
-        messages,
-        conversationModeRef.current as SessionMode,
-        callDuration
-      )
-    }, 300)
+    // Immediate synchronous write — <2ms for text data, no race conditions
+    updateChatSession(
+      user?.id ?? null,
+      activeSessionId,
+      messages,
+      conversationModeRef.current as SessionMode,
+      callDuration
+    )
+  }, [messages, activeSessionId, callDuration, user?.id])
 
-    return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
-    }
-  }, [messages, activeSessionId, callDuration, user?.id, settingsAutoSave])
-
-  // ── Recover interrupted session on mount ──────────────────────────────────
+  // ── Recover interrupted sessions on mount ─────────────────────────────────
   useEffect(() => {
     if (authLoading) return
-    const recovered = recoverActiveSession(user?.id ?? null)
+    const recovered = recoverActiveSessions(user?.id ?? null)
     if (recovered && recovered.messages.length > 0) {
-      console.log('[AutoSave] Recovered interrupted session:', recovered.id, 'with', recovered.messages.length, 'messages')
+      console.log('[ChatSave] Recovered interrupted session:', recovered.id, 'with', recovered.messages.length, 'messages')
+
+      // Process the interrupted session into structured memory so we don't lose
+      // vocabulary tracking, error patterns, and session history data.
+      try {
+        const updatedMemory = processAndSaveSessionEnd(user?.id ?? null, {
+          messages: recovered.messages,
+          scenarioId: recovered.scenarioId || 'free-talk',
+          title: recovered.title || 'Recovered session',
+          duration: recovered.durationSeconds || 0,
+          memoryHighlight: '', // No AI highlight available for interrupted sessions
+        })
+        structuredMemoryRef.current = updatedMemory
+        setPlannerInjection(buildPlannerInjection(updatedMemory))
+        console.log('[ChatSave] Processed recovered session into structured memory')
+      } catch (err) {
+        console.warn('[ChatSave] Failed to process recovered session memory:', err)
+        // Non-critical — memory just won't include this session's data
+      }
     }
   }, [user?.id, authLoading])
 
-  // ── Flush session on page unload (tab close, refresh, navigate away) ─────
+  // ── Safety net: flush on tab close using ref (always-current state) ───────
+  // Since writes are immediate, this is a backup for the rare case where a
+  // setMessages + immediate re-render hasn't triggered the effect yet.
   useEffect(() => {
     const handleUnload = () => {
-      if (!settingsAutoSave) return
-      if (activeSessionId && messages.length > 0) {
-        // Synchronous flush — no debounce, fires even on sudden tab close
+      if (activeSessionId && messagesRef.current.length > 0) {
         updateChatSession(
           user?.id ?? null,
           activeSessionId,
-          messages,
+          messagesRef.current,
           conversationModeRef.current as SessionMode,
           callDuration
         )
       }
     }
-    window.addEventListener('beforeunload', handleUnload)
     window.addEventListener('pagehide', handleUnload)
     return () => {
-      window.removeEventListener('beforeunload', handleUnload)
       window.removeEventListener('pagehide', handleUnload)
     }
-  }, [activeSessionId, messages, callDuration, user?.id, settingsAutoSave])
+  }, [activeSessionId, callDuration, user?.id])
 
   // ── Mic control (voice recording → send audio directly to Gemini) ────────
   const recorderRef = useRef<AudioRecorder | null>(null)
@@ -579,6 +696,7 @@ export function ConversationPage() {
 
   const startMic = useCallback(async () => {
     if (isMutedRef.current) return
+    if (userManuallyMutedRef.current) return // Respect user's manual mute
 
     // ── Free tier: check daily message limit before recording ─────────────
     if (!isSubscribed(user?.id) && hasReachedDailyLimit(user?.id)) {
@@ -588,6 +706,7 @@ export function ConversationPage() {
 
     setIsListening(true)
     setRecordingDuration(0)
+    pipelineStateRef.current = 'recording'
 
     // Create fresh recorder each time (ensures callbacks are current)
     recorderRef.current = new AudioRecorder({
@@ -608,11 +727,13 @@ export function ConversationPage() {
         noSpeechCountRef.current++
 
         if (conversationModeRef.current === 'handsfree' && !isMutedRef.current) {
-          if (noSpeechCountRef.current >= 3) {
-            console.log('[Mic] 30s inactivity — pausing handsfree')
+          if (noSpeechCountRef.current >= 6) {
+            console.log('[Mic] 60s inactivity — pausing handsfree')
             setIsMuted(true)
             isMutedRef.current = true
             noSpeechCountRef.current = 0
+            setShowMicPausedToast(true)
+            setTimeout(() => setShowMicPausedToast(false), 5000)
           } else {
             setTimeout(() => startMic(), 1000)
           }
@@ -625,6 +746,7 @@ export function ConversationPage() {
   const stopMic = useCallback(() => {
     setIsListening(false)
     setRecordingDuration(0)
+    pipelineStateRef.current = 'idle'
     if (recorderRef.current && recorderRef.current.currentState !== 'idle') {
       recorderRef.current.cancel()
     }
@@ -684,11 +806,13 @@ export function ConversationPage() {
         noSpeechCountRef.current++
         // Restart mic in handsfree (or pause if too many no-speech cycles)
         if (conversationModeRef.current === 'handsfree' && !isMutedRef.current) {
-          if (noSpeechCountRef.current >= 3) {
-            console.log('[Mic] 30s inactivity (noSpeech from API) — pausing')
+          if (noSpeechCountRef.current >= 6) {
+            console.log('[Mic] 60s inactivity (noSpeech from API) — pausing')
             setIsMuted(true)
             isMutedRef.current = true
             noSpeechCountRef.current = 0
+            setShowMicPausedToast(true)
+            setTimeout(() => setShowMicPausedToast(false), 5000)
           } else {
             setTimeout(() => startMic(), 500)
           }
@@ -720,14 +844,11 @@ export function ConversationPage() {
         id: aiMsgId,
         text: result.aiResponse,
         isUser: false,
-        vocab: result.vocab?.length ? result.vocab : undefined,
-        teachingNote: result.teachingNote || undefined,
         timestamp: Date.now(),
         audio: voiceNotesEnabledRef.current ? { status: 'loading' as const } : undefined,
       }])
 
       if (result.corrections.length > 0) setSessionCorrections((prev) => [...prev, ...result.corrections])
-      if (result.vocab?.length) setSessionVocab((prev) => [...prev, ...result.vocab!])
 
       // ── Capture memory update ────────────────────────────────────────
       turnCountRef.current++
@@ -995,7 +1116,8 @@ export function ConversationPage() {
               return prev
             })
           }
-        }
+
+      }
       )
 
       // Attach corrections to the user's message (they describe errors in what the user said)
@@ -1010,11 +1132,7 @@ export function ConversationPage() {
       const aiMessage: ConversationMessage = {
         id: streamingMsgId,
         text: result.aiResponse,
-        translation: result.translation,
         isUser: false,
-        vocab: result.vocab && result.vocab.length > 0 ? result.vocab : undefined,
-        emotion: result.emotion,
-        teachingNote: result.teachingNote || undefined,
         timestamp: Date.now(),
         audio: (conversationModeRef.current === 'manual' || conversationModeRef.current === 'handsfree') 
           && voiceNotesEnabledRef.current 
@@ -1022,12 +1140,44 @@ export function ConversationPage() {
           ? { status: 'loading' }
           : undefined,
       }
-      // Update the streaming placeholder with final data
-      setMessages((prev) => prev.map((m) => m.id === streamingMsgId ? aiMessage : m))
+
+      // Multi-bubble delivery for multi-thought responses
+      const hasMultipleParts = result.responseParts && result.responseParts.length >= 2
+      if (hasMultipleParts) {
+        // First bubble: replace the streaming placeholder with the first part
+        const firstPart: ConversationMessage = {
+          id: streamingMsgId,
+          text: result.responseParts![0],
+          isUser: false,
+          timestamp: Date.now(),
+          audio: (conversationModeRef.current === 'manual' || conversationModeRef.current === 'handsfree')
+            && voiceNotesEnabledRef.current
+            && messages.length > 0
+            ? { status: 'loading' }
+            : undefined,
+        }
+        setMessages((prev) => prev.map((m) => m.id === streamingMsgId ? firstPart : m))
+
+        // Deliver subsequent parts with staggered delays (800-1200ms)
+        const remainingParts = result.responseParts!.slice(1)
+        for (let i = 0; i < remainingParts.length; i++) {
+          const delay = 800 + Math.random() * 400 // 800-1200ms delay
+          await new Promise((resolve) => setTimeout(resolve, delay))
+          const partId = `${streamingMsgId}-part-${i + 1}`
+          const partMessage: ConversationMessage = {
+            id: partId,
+            text: remainingParts[i],
+            isUser: false,
+            timestamp: Date.now(),
+          }
+          setMessages((prev) => [...prev, partMessage])
+        }
+      } else {
+        setMessages((prev) => prev.map((m) => m.id === streamingMsgId ? aiMessage : m))
+      }
       setConversationState((prev) => ({ ...prev, talkingoLevel: prev.talkingoLevel }))
 
       if (result.corrections.length > 0) setSessionCorrections((prev) => [...prev, ...result.corrections])
-      if (result.vocab && result.vocab.length > 0) setSessionVocab((prev) => [...prev, ...(result.vocab ?? [])])
 
       // Track correction count for this turn (for errorRate signal)
       recentCorrectionCountsRef.current = [
@@ -1072,6 +1222,41 @@ export function ConversationPage() {
   const handleUserInputRef = useRef(handleUserInput)
   useEffect(() => { handleUserInputRef.current = handleUserInput }, [handleUserInput])
 
+  // ── Voice-turn teaching: analyze each finalized user utterance in a live call ──
+  // The Live API only streams audio, so it can't return corrections. After each
+  // user turn we run a cheap text analysis in the background → corrections +
+  // memory + wrong-language/script fixes. Soft-fails so it never disrupts the call.
+  const handleVoiceUserTurn = useCallback(async (text: string, messageId?: string) => {
+    const clean = text?.trim()
+    if (!clean || clean.length < 2) return
+    try {
+      const result = await geminiClient.analyzeVoiceTurn(clean, stateRef.current)
+      const corrections = (result.corrections ?? []) as Correction[]
+
+      if (messageId && (result.normalizedTranscript || corrections.length > 0)) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? {
+                  ...m,
+                  text: result.normalizedTranscript || m.text,
+                  corrections: corrections.length > 0 ? corrections : m.corrections,
+                }
+              : m
+          )
+        )
+      }
+
+      if (corrections.length > 0) setSessionCorrections((prev) => [...prev, ...corrections])
+      turnCountRef.current++
+      captureMemoryUpdate(result.memoryUpdate)
+    } catch {
+      // Soft-fail — teaching is best-effort; the conversation comes first.
+    }
+  }, [])
+  const handleVoiceUserTurnRef = useRef(handleVoiceUserTurn)
+  useEffect(() => { handleVoiceUserTurnRef.current = handleVoiceUserTurn }, [handleVoiceUserTurn])
+
   // ── Native mode: Gemini Live API with chat bubbles ────────────────────────
   useEffect(() => {
     if (conversationMode !== 'native' || view !== 'in-call') {
@@ -1106,36 +1291,61 @@ export function ConversationPage() {
         }
       },
       onTranscript: (event) => {
+        const isUser = event.role === 'user'
+        const prevTurn = nativeTurnRef.current
+
+        // Resolve the message id + full merged text for this turn synchronously,
+        // so the analysis below sees the COMPLETE utterance (Gemini streams
+        // transcripts, sometimes cumulatively, sometimes incrementally).
+        let id: string
+        let mergedText: string
+        if (prevTurn && prevTurn.isUser === isUser) {
+          id = prevTurn.id
+          mergedText =
+            event.text.length >= prevTurn.text.length && event.text.startsWith(prevTurn.text)
+              ? event.text
+              : event.text.length > prevTurn.text.length
+                ? event.text
+                : prevTurn.text + event.text
+        } else {
+          id = `native-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+          mergedText = event.text
+        }
+        nativeTurnRef.current = { id, text: mergedText, isUser }
+
         setMessages((prev) => {
           const last = prev[prev.length - 1]
-          const isUser = event.role === 'user'
-
-          // Same role still speaking → update last message in-place
-          if (last && last.isUser === isUser) {
+          if (last && last.id === id) {
             const updated = [...prev]
-            // Smart text merge: cumulative replace vs incremental append
-            // (Gemini Live model output is incremental — word-by-word)
-            const merged =
-              event.text.length >= last.text.length && event.text.startsWith(last.text)
-                ? event.text
-                : event.text.length > last.text.length
-                  ? event.text
-                  : last.text + event.text
-            updated[updated.length - 1] = { ...last, text: merged }
+            updated[updated.length - 1] = { ...last, text: mergedText }
             return updated
           }
-
-          // New turn → add a fresh message
-          const id = `native-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-          return [...prev, { id, text: event.text, isUser, timestamp: Date.now() }]
+          return [...prev, { id, text: mergedText, isUser, timestamp: Date.now() }]
         })
+
+        // When the user finishes an utterance, analyze the full text for
+        // corrections + memory and attach them to that bubble.
+        if (isUser && event.final) {
+          handleVoiceUserTurnRef.current(mergedText, id)
+          nativeTurnRef.current = null // next user utterance starts a fresh bubble
+        }
       },
       onInterrupted: () => {
-        // Remove incomplete model message when user interrupts mid-turn
+        // Replace last incomplete AI message with an interruption marker
+        // that auto-fades after 1.5 seconds instead of silently deleting it
         setMessages((prev) => {
           const last = prev[prev.length - 1]
           if (last && !last.isUser) {
-            return prev.slice(0, -1)
+            const interruptedMsg = {
+              ...last,
+              text: '…',
+              isInterruption: true,
+            }
+            // Auto-remove the interruption marker after 1.5s
+            setTimeout(() => {
+              setMessages((p) => p.filter((m) => m.id !== interruptedMsg.id))
+            }, 1500)
+            return [...prev.slice(0, -1), interruptedMsg]
           }
           return prev
         })
@@ -1151,7 +1361,16 @@ export function ConversationPage() {
       .connect(conversationState)
       .then(async () => {
         await service.startMic()
-        service.sendText("Let's start our conversation.")
+        // Generate a localized opener in the user's target language
+        try {
+          const opener = await geminiClient.generateOpener(stateRef.current, stateRef.current.userName)
+          service.sendText(opener.aiResponse)
+        } catch {
+          // Fallback to a localized greeting in the user's target language
+          // (never a hardcoded English string).
+          const hello = getLanguageMeta(stateRef.current.targetLanguage).sampleHello
+          service.sendText(hello)
+        }
       })
       .catch((err) => {
         console.error('[Native] Connection failed:', err)
@@ -1162,6 +1381,7 @@ export function ConversationPage() {
     return () => {
       service.disconnect()
       nativeServiceRef.current = null
+      nativeTurnRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationMode, view])
@@ -1196,14 +1416,14 @@ export function ConversationPage() {
     }
 
     setPreferences(completed)
-    geminiClient.setLanguage(completed.targetLanguage)
+    geminiClient.setLanguage(completed.targetLanguage, completed.nativeLanguage, completed.talkingoLevel)
     setForceWelcome(false)
 
     if (completed.targetLanguage) {
-      geminiClient.setLanguage(completed.targetLanguage)
+      geminiClient.setLanguage(completed.targetLanguage, completed.nativeLanguage, completed.talkingoLevel)
     }
 
-    const newState = stateFromPrefs(completed, user?.name)
+    const newState = stateFromPrefs(completed, user?.displayName)
     setConversationState(newState)
     stateRef.current = newState
 
@@ -1240,7 +1460,7 @@ export function ConversationPage() {
     const prefs = preferences
     if (!prefs?.targetLanguage) return
 
-    const newState = stateFromPrefs(prefs, user?.name)
+    const newState = stateFromPrefs(prefs, user?.displayName)
 
     // ── Wire the clicked scenario into state ──────────────────────────────
     // This ensures the opener and every turn know what the user actually picked.
@@ -1256,19 +1476,33 @@ export function ConversationPage() {
     }
 
     // ── Inject cross-session memory into state ───────────────────────
+    // Memory now works in BOTH modes (one consolidated system):
+    //  - Practice mode → full planner (targets weak spots + remembers you)
+    //  - Free Talk     → light memory (remembers you, no drilling)
+    // Falls back to the legacy lifeline only if structured memory is empty.
     const noteText = userNote
-    if (memoryLifeline) newState.memoryLifeline = memoryLifeline
-    if (noteText) newState.userNotes = noteText
+    const structured = structuredMemoryRef.current
+    const freeTalkMemory = structured ? buildMemoryInjection(structured) : ''
+
+    if (learningMode === 'practice' && plannerInjection) {
+      newState.practiceTargets = plannerInjection
+    } else if (freeTalkMemory) {
+      newState.practiceTargets = freeTalkMemory
+    } else if (memoryLifeline) {
+      newState.memoryLifeline = memoryLifeline
+    }
+    // userNote is already folded into the injections above; only add separately
+    // when neither injection fired.
+    if (noteText && !newState.practiceTargets) newState.userNotes = noteText
     turnCountRef.current = 0
 
     setConversationState(newState)
     stateRef.current = newState
-    geminiClient.setLanguage(newState.targetLanguage)
+    geminiClient.setLanguage(newState.targetLanguage, newState.nativeLanguage, newState.talkingoLevel)
     geminiClient.resetHistory()
 
     setMessages([])
     setSessionCorrections([])
-    setSessionVocab([])
     setCallDuration(0)
     setInterimTranscript('')
     setIsProcessing(true)
@@ -1305,28 +1539,27 @@ export function ConversationPage() {
         return
       }
 
-      // Use pre-fetched warmup opener if available (for free-talk sessions)
+      // Use pre-fetched warmup opener if available (for free-talk sessions) —
+      // but only when we DON'T have memory to weave in. The warmup opener was
+      // generated without memory context, so for returning users we generate a
+      // fresh, memory-aware greeting instead.
+      const hasMemory = !!(newState.practiceTargets || newState.memoryLifeline)
       let opener
-      if (scenarioId === 'free-talk' && warmupOpenerRef.current) {
+      if (scenarioId === 'free-talk' && warmupOpenerRef.current && !hasMemory) {
         opener = warmupOpenerRef.current
         warmupOpenerRef.current = null
         console.log('[startSession] Using pre-fetched warmup opener')
       } else {
-        opener = await geminiClient.generateOpener(newState, user?.name)
+        opener = await geminiClient.generateOpener(newState, user?.displayName)
       }
       const aiMessage: ConversationMessage = {
         id: Date.now().toString(),
         text: opener.aiResponse,
-        translation: opener.translation,
         isUser: false,
-        emotion: opener.emotion,
-        vocab: opener.vocab && opener.vocab.length > 0 ? opener.vocab : undefined,
         timestamp: Date.now(),
-        // First message (opener) is always text-only for instant response
         audio: undefined,
       }
       setMessages([aiMessage])
-      if (opener.vocab && opener.vocab.length > 0) setSessionVocab((prev) => [...prev, ...opener.vocab!])
       setIsProcessing(false)
       setServiceError(null)
       if (conversationModeRef.current === 'manual' || conversationModeRef.current === 'handsfree') {
@@ -1413,13 +1646,13 @@ export function ConversationPage() {
     savePreferences(user?.id ?? null, updatedPrefs, !!user)
 
     // Update conversation state to reflect changes immediately
-    const newState = stateFromPrefs(updatedPrefs, user?.name)
+    const newState = stateFromPrefs(updatedPrefs, user?.displayName)
     setConversationState(newState)
     stateRef.current = newState
 
     // If target language changed, update the gemini client
     if (changes.targetLanguage && changes.targetLanguage !== preferences.targetLanguage) {
-      geminiClient.setLanguage(changes.targetLanguage as any)
+      geminiClient.setLanguage(changes.targetLanguage as any, (changes.nativeLanguage ?? preferences.nativeLanguage) as any, (changes.talkingoLevel ?? preferences.talkingoLevel) as any)
     }
   }, [preferences, user])
 
@@ -1449,6 +1682,7 @@ export function ConversationPage() {
     setIsMuted((prev) => {
       const next = !prev
       isMutedRef.current = next
+      userManuallyMutedRef.current = next // Track user's intentional mute action
       if (next) stopMic()
       else if (!isSpeakingRef.current) startMic()
       return next
@@ -1470,7 +1704,7 @@ export function ConversationPage() {
   const handleEndCallRequest = useCallback(() => setShowEndCallDialog(true), [])
 
   // ── End call → recap → home ────────────────────────────────────────────
-  const handleEndCallConfirm = useCallback(async (saveTranscript: boolean, confirmedVocab?: VocabItem[]) => {
+  const handleEndCallConfirm = useCallback(async (saveTranscript: boolean) => {
     setShowEndCallDialog(false)
 
     // Mark the completed scenario for module tracking
@@ -1491,15 +1725,10 @@ export function ConversationPage() {
     ttsAbortersRef.current.forEach((c) => c.abort())
     ttsAbortersRef.current.clear()
 
-    const wasMessageCount = messages.length
     const fullDuration = callDuration
-
-    // Use confirmed vocab if provided, otherwise fall back to sessionVocab
-    const finalVocab = confirmedVocab || sessionVocab
 
     // ── End the auto-save session (mark as ended) ─────────────────────────
     if (activeSessionId) {
-      // Final flush: save latest messages before marking ended
       updateChatSession(
         user?.id ?? null,
         activeSessionId,
@@ -1509,6 +1738,48 @@ export function ConversationPage() {
       )
       endChatSession(user?.id ?? null, activeSessionId, fullDuration)
       setActiveSessionId(null)
+    }
+
+    // ── Process session into structured memory (vocab + errors + summary) ──
+    if (messages.length > 0) {
+      const scenarioId = currentScenarioRef.current || conversationState.currentUnitId || 'free-talk'
+      const sessionTitle = conversationState.topic === 'general' ? 'Free Talk' :
+        (typeof conversationState.topic === 'string' ? conversationState.topic : 'Conversation')
+
+      const updatedMemory = processAndSaveSessionEnd(user?.id ?? null, {
+        messages,
+        scenarioId,
+        title: sessionTitle,
+        duration: fullDuration,
+        memoryHighlight: lastSavedMemoryRef.current,
+        targetLanguage: conversationState.targetLanguage,
+      })
+
+      // Update refs and state for next session
+      structuredMemoryRef.current = updatedMemory
+      const newInjection = buildPlannerInjection(updatedMemory)
+      setPlannerInjection(newInjection)
+
+      // ── Build the session recap (corrections + level-up offer) ──────────
+      const currentLevel = conversationState.talkingoLevel ?? 5
+      const signal = getLevelUpSignal(updatedMemory, currentLevel)
+      const levelUp = signal.ready
+        ? {
+            fromLevel: currentLevel,
+            toLevel: currentLevel + 1,
+            toLevelName: getLevelByNumber(currentLevel + 1).name,
+          }
+        : null
+      setRecapData({
+        corrections: sessionCorrections,
+        durationSeconds: fullDuration,
+        levelUp,
+      })
+
+      // Sync structured memory to Appwrite (fire-and-forget)
+      if (user?.id) {
+        syncStructuredMemoryRemote(user.id).catch(() => {})
+      }
     }
 
     // ── Final memory sync to Appwrite (fire-and-forget) ────────────────
@@ -1528,15 +1799,40 @@ export function ConversationPage() {
     isProcessingRef.current = false
     pendingRetryRef.current = null
 
-    // ── Clean up — go home ──
-    setMessages([])
+    // Keep messages in memory after live calls so users can review the transcript
+    if (conversationModeRef.current !== 'live') {
+      setMessages([])
+    }
     setSessionCorrections([])
-    setSessionVocab([])
     setInterimTranscript('')
     setCallDuration(0)
     geminiClient.resetHistory()
     setView('home')
-  }, [messages, callDuration, conversationState, sessionCorrections, sessionVocab, user, stopMic, activeSessionId])
+  }, [messages, callDuration, conversationState, sessionCorrections, user, stopMic, activeSessionId])
+
+  // ── Accept the level-up offer from the recap ─────────────────────────────
+  const handleAcceptLevelUp = useCallback(async () => {
+    if (!recapData?.levelUp || !preferences) { setRecapData(null); return }
+    const newLevel = recapData.levelUp.toLevel
+    const updated: UserPreferences = {
+      ...preferences,
+      talkingoLevel: newLevel,
+      level: talkingoLevelToLanguageLevel(newLevel as any),
+    }
+    setPreferences(updated)
+    const newState = stateFromPrefs(updated, user?.displayName)
+    setConversationState(newState)
+    stateRef.current = newState
+    geminiClient.setLanguage(updated.targetLanguage, updated.nativeLanguage, newLevel)
+    try {
+      await savePreferences(user?.id ?? null, updated, !!user)
+    } catch {
+      // Non-critical — local state already reflects the new level.
+    }
+    setRecapData(null)
+  }, [recapData, preferences, user])
+
+  const handleCloseRecap = useCallback(() => setRecapData(null), [])
 
 
 
@@ -1544,51 +1840,6 @@ export function ConversationPage() {
 
 
   const handleEndCallCancel = useCallback(() => setShowEndCallDialog(false), [])
-
-  const handleLoadConversation = useCallback((savedConv: ChatSession) => {
-    // Force manual mode for free users loading a conversation
-    if (!isSubscribed(user?.id) && !isModeAllowed(conversationModeRef.current)) {
-      setConversationMode('manual')
-    }
-
-    setMessages(savedConv.messages)
-    geminiClient.setLanguage(conversationState.targetLanguage)
-    geminiClient.resetHistory()
-
-    // ── Inject memory into state for continued conversation ───────────
-    const noteText = userNote
-    setConversationState((prev) => ({
-      ...prev,
-      memoryLifeline: memoryLifeline || undefined,
-      userNotes: noteText || undefined,
-    }))
-
-    setCallDuration(0)
-    setView('in-call')
-
-    // Re-use the same session ID — new messages append to the existing entry
-    setActiveSessionId(savedConv.id)
-
-    // Update the active session marker immediately so crash recovery works
-    updateChatSession(
-      user?.id ?? null,
-      savedConv.id,
-      savedConv.messages,
-      savedConv.mode,
-      0
-    )
-
-    const lastAi = savedConv.messages.filter((m: ConversationMessage) => !m.isUser).pop()
-    if (!lastAi) return
-    if (conversationModeRef.current === 'manual' || conversationModeRef.current === 'handsfree') {
-      const persona = getPersonaById(stateRef.current.persona || 'eli')
-      requestAudioForMessage(lastAi.id, lastAi.text, persona?.voiceName)
-    } else if (conversationModeRef.current === 'native') {
-      // Native mode handles audio via LiveCallService — skip TTS
-    } else {
-      speakAndResume(lastAi.text)
-    }
-  }, [speakAndResume, requestAudioForMessage, conversationState.targetLanguage, user?.id, updateChatSession])
 
   const handleErrorRetry = useCallback(() => {
     setServiceError(null)
@@ -1662,6 +1913,7 @@ export function ConversationPage() {
           initialPreferences={preferences}
           forceFullFlow={forceWelcome}
           reassessmentMode={!!preferences} // Skip setup if user already has preferences
+          initialEmail={user ? (user.email || '') : undefined}
         />
         <MicErrorToast
           kind={micError?.kind ?? null}
@@ -1697,11 +1949,13 @@ export function ConversationPage() {
         <HomeShell
           preferences={preferences}
           progress={progress}
-          userName={user?.name ?? preferences.userName}
+          userName={user?.displayName ?? preferences.userName}
           userId={user?.id ?? null}
           onStartSession={startSession}
-          interactionMode={conversationMode}
-          onInteractionModeChange={handleModeChange}
+          learningMode={learningMode}
+          inputMethod={inputMethod}
+          onLearningModeChange={handleLearningModeChange}
+          onInputMethodChange={handleInputMethodChange}
           onOpenPhraseBank={() => {
             if (!isSubscribed(user?.id)) { setUpgradeReason('phrasebank'); return }
             setPhraseBankOpen(true)
@@ -1731,7 +1985,9 @@ export function ConversationPage() {
           onLearningPrefsChange={handleLearningPrefsChange}
           currentPersona={conversationState.persona}
           onPersonaChange={handlePersonaChange}
-          onLoadConversation={handleLoadConversation}
+          showScriptToggle={showScriptToggle}
+          effectiveScript={effectiveScript}
+          onScriptChange={changeScript}
         />
         <MicErrorToast
           kind={micError?.kind ?? null}
@@ -1830,6 +2086,38 @@ export function ConversationPage() {
         />
       )}
 
+      {/* Unified provider-agnostic checkout return overlay. Confirms the
+          subscription (sync-checkout + status polling) for both Stripe and
+          DodoPayments so the user sees Premium immediately. */}
+      {showCheckoutReturn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <CheckoutReturnHandler
+            userId={user?.id}
+            onSuccess={(info) => {
+              setIsSubscribedCheck(info.status === 'active' || info.status === 'trialing')
+              setPaymentSuccessInfo({ trialEndsAt: info.trialEndsAt, plan: info.plan })
+              // Strip the return params now that the flow has finalized.
+              const url = new URL(window.location.href)
+              ;['provider', 'status', 'session_id', 'subscription_id'].forEach((k) =>
+                url.searchParams.delete(k),
+              )
+              window.history.replaceState({}, '', url.pathname + url.search)
+              // Briefly show the celebratory dialog, then dismiss the overlay.
+              setShowCheckoutReturn(false)
+              setShowPaymentSuccess(true)
+            }}
+            onError={() => {
+              const url = new URL(window.location.href)
+              ;['provider', 'status', 'session_id', 'subscription_id'].forEach((k) =>
+                url.searchParams.delete(k),
+              )
+              window.history.replaceState({}, '', url.pathname + url.search)
+              // Leave the handler's error card visible; allow dismissal on tap.
+            }}
+          />
+        </div>
+      )}
+
       {/* Checkout cancelled toast */}
       {showCheckoutCancelledToast && (
         <CheckoutCancelledToast onClose={() => setShowCheckoutCancelledToast(false)} />
@@ -1858,6 +2146,29 @@ export function ConversationPage() {
         onDismiss={() => setMicError(null)}
       />
 
+      {/* Mic paused due to inactivity toast */}
+      {showMicPausedToast && (
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-full glass-card border border-primary/40 bg-primary/10 backdrop-blur-xl shadow-xl">
+            <MicOff className="w-4 h-4 text-primary" />
+            <span className="text-xs font-medium text-foreground/90 whitespace-nowrap">
+              Mic paused after inactivity
+            </span>
+            <button
+              onClick={() => {
+                setIsMuted(false)
+                isMutedRef.current = false
+                setShowMicPausedToast(false)
+                startMic()
+              }}
+              className="ml-1 px-2.5 py-1 rounded-full bg-primary/20 hover:bg-primary/30 border border-primary/40 text-primary text-[10px] font-bold transition-all active:scale-95"
+            >
+              Resume
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="relative z-10 h-full flex flex-col">
         {conversationMode !== 'live' && (
           <main className="flex-1 min-h-0 px-4 sm:px-6 lg:px-8">
@@ -1879,15 +2190,12 @@ export function ConversationPage() {
                   const autoPlay = isLastAi && shouldAutoPlay()
 
                   return (
+                    <div key={message.id} data-message-id={message.id}>
                     <TranscriptMessage
-                      key={message.id}
                       text={message.text}
-                      translation={message.translation}
                       isUser={message.isUser}
+                      isInterruption={message.isInterruption}
                       corrections={message.corrections}
-                      vocab={message.vocab}
-                      emotion={message.emotion}
-                      teachingNote={message.teachingNote}
                       delay={index < messages.length - 2 ? 0 : 60}
                       skipAnimation={index < messages.length - 2}
                       personaId={conversationState.persona || 'eli'}
@@ -1920,8 +2228,15 @@ export function ConversationPage() {
                           ? () => {
                               setIsSpeaking(true)
                               isSpeakingRef.current = true
-                              // Stop mic while AI is speaking
-                              if (isListening) stopMic()
+                              pipelineStateRef.current = 'playing'
+                              // Pause mic via pipeline coordinator (not user-initiated mute)
+                              if (isListening && recorderRef.current) {
+                                recorderRef.current.pause()
+                                pipelinePausedRef.current = true
+                              } else if (isListening) {
+                                stopMic()
+                                pipelinePausedRef.current = true
+                              }
                             }
                           : undefined
                       }
@@ -1930,18 +2245,32 @@ export function ConversationPage() {
                           ? () => {
                               setIsSpeaking(false)
                               isSpeakingRef.current = false
-                              // Hands-free: resume mic when AI finishes speaking
+                              pipelineStateRef.current = 'idle'
+                              // Resume mic only if:
+                              // 1. Pipeline paused the mic (not user-initiated mute)
+                              // 2. Mode is handsfree/native
+                              // 3. User has NOT manually muted (requirement 3.9)
                               if (
-                                isLastAi
-                                && conversationModeRef.current === 'handsfree'
-                                && !isMutedRef.current
+                                pipelinePausedRef.current
+                                && !userManuallyMutedRef.current
+                                && (conversationModeRef.current === 'handsfree' || conversationModeRef.current === 'native')
                               ) {
-                                setTimeout(() => startMic(), 250)
+                                pipelinePausedRef.current = false
+                                if (recorderRef.current && recorderRef.current.currentState === 'paused') {
+                                  recorderRef.current.resume()
+                                  pipelineStateRef.current = 'recording'
+                                } else if (isLastAi) {
+                                  setTimeout(() => startMic(), 250)
+                                  pipelineStateRef.current = 'recording'
+                                }
+                              } else {
+                                pipelinePausedRef.current = false
                               }
                             }
                           : undefined
                       }
                     />
+                    </div>
                   )
                 })}
 
@@ -1978,6 +2307,7 @@ export function ConversationPage() {
 
         {conversationMode === 'native' || conversationMode === 'handsfree' ? (
           <HandsfreeBar
+            mode={conversationMode as 'handsfree' | 'native'}
             isListening={isListening}
             isSpeaking={isSpeaking}
             isProcessing={isProcessing}
@@ -2085,13 +2415,18 @@ export function ConversationPage() {
           callDuration={callDuration}
           onEndCall={handleEndCallRequest}
           onTranscriptLine={(role, text) => {
+            const id = `live-${Date.now()}-${Math.random()}`
             const msg: ConversationMessage = {
-              id: `live-${Date.now()}-${Math.random()}`,
+              id,
               text,
               isUser: role === 'user',
               timestamp: Date.now(),
             }
             setMessages((prev) => [...prev, msg])
+            // Teach + remember from the user's spoken turn (background, soft-fail).
+            if (role === 'user') {
+              handleVoiceUserTurnRef.current(text, id)
+            }
           }}
         />
       )}
@@ -2103,7 +2438,15 @@ export function ConversationPage() {
         messageCount={messages.length}
         callDuration={callDuration}
         autoSaveEnabled={true}
-        extractedVocab={sessionVocab}
+      />
+
+      <SessionRecapDialog
+        isOpen={!!recapData}
+        corrections={recapData?.corrections ?? []}
+        durationSeconds={recapData?.durationSeconds ?? 0}
+        levelUp={recapData?.levelUp ?? null}
+        onAcceptLevelUp={handleAcceptLevelUp}
+        onClose={handleCloseRecap}
       />
 
       <NativeRewriteDialog
@@ -2143,5 +2486,6 @@ function stateFromPrefs(prefs: UserPreferences, userName?: string): Conversation
     nativeLanguage: prefs.nativeLanguage,
     learningGoal: prefs.learningGoal,
     currentUnitId: startingUnit.id,
+    preferredScript: prefs.preferredScript,
   }
 }

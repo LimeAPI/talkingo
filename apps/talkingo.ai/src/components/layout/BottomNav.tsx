@@ -19,10 +19,10 @@ const tabs: { id: HomeTab; label: string; icon: typeof MessageCircle }[] = [
 ]
 
 const orbitColors: Record<HomeTab, string> = {
-  talk: 'text-gold',
-  learn: 'text-sky-400',
-  history: 'text-lavender',
-  profile: 'text-mint',
+  talk: 'text-primary',
+  learn: 'text-secondary',
+  history: 'text-accent',
+  profile: 'text-success',
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
@@ -34,7 +34,6 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         'shadow-[0_12px_40px_-12px_rgba(0,0,0,0.40),0_0_0_1px_rgba(255,215,0,0.04)_inset]',
         'safe-area-bottom backdrop-blur-xl'
       )}
-      role="tablist"
       aria-label="Main navigation"
     >
       <div className="relative flex items-center px-2 py-2 gap-1">
@@ -43,42 +42,32 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
           return (
             <button
               key={id}
-              role="tab"
-              aria-selected={isActive}
+              aria-current={isActive ? 'page' : undefined}
               onClick={() => onTabChange(id)}
               className={cn(
                 'relative flex flex-col items-center justify-center gap-1',
-                'w-16 px-2 py-2 rounded-2xl transition-all duration-300',
-                '[-webkit-tap-highlight-color:transparent] focus:outline-none',
-                isActive ? orbitColors[id] : 'text-muted-foreground/50 hover:text-muted-foreground'
+                'w-16 px-2 py-2 rounded-2xl transition-colors duration-200',
+                '[-webkit-tap-highlight-color:transparent]',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
+                isActive ? orbitColors[id] : 'text-foreground/50 hover:text-foreground/80'
               )}
             >
-              {/* Orbital ring around active */}
+              {/* Static accent border on active */}
               {isActive && (
                 <motion.div
                   layoutId="orbit-ring"
-                  className="absolute inset-0 rounded-2xl border-2 border-current/20"
+                  className="absolute inset-0 rounded-2xl border-2 border-current/30"
                   initial={false}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                >
-                  <div className="absolute inset-[-4px] rounded-2xl border border-current/10 animate-orbital-spin" style={{ animationDuration: '8s' }} />
-                </motion.div>
-              )}
-              {/* Glow dot for active */}
-              {isActive && (
-                <motion.span
-                  layoutId="orbit-dot"
-                  className="absolute -top-0.5 w-1 h-1 rounded-full bg-current animate-star-twinkle"
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
               <Icon className={cn(
-                'w-5 h-5 relative z-10 transition-transform duration-300',
-                isActive ? 'scale-110 drop-shadow-[0_0_12px_currentColor]' : 'scale-100'
+                'w-5 h-5 relative z-10 transition-transform duration-200',
+                isActive ? 'scale-110' : 'scale-100'
               )} />
               <span className={cn(
-                'text-[9px] font-bold relative z-10 transition-all',
-                isActive ? 'opacity-100' : 'opacity-60'
+                'text-xs font-semibold relative z-10',
+                isActive ? 'opacity-100' : 'opacity-70'
               )}>{label}</span>
             </button>
           )

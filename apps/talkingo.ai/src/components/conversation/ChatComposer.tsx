@@ -59,7 +59,6 @@ export function ChatComposer({
   const [text, setText] = useState('')
   const [isComposing, setIsComposing] = useState(false)
   const [showVoiceNoteHint, setShowVoiceNoteHint] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(true)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -119,53 +118,8 @@ export function ChatComposer({
             </div>
           )}
 
-          {/* Composer pill - collapsed state */}
-          {isCollapsed && !hasText && (
-            <div
-              className={cn(
-                'relative flex items-center gap-3 px-4 py-3 rounded-3xl border backdrop-blur-sm shadow-xl transition-all duration-300 voice-control-bar cursor-pointer',
-                'bg-card/70 border-border/60 hover:bg-card/90',
-                isListening
-                  ? 'border-primary/50 shadow-primary/15 ring-2 ring-primary/20'
-                  : isSpeaking
-                  ? 'border-secondary/50 shadow-secondary/15 ring-2 ring-secondary/20'
-                  : 'hover:border-border/80'
-              )}
-              onClick={() => setIsCollapsed(false)}
-            >
-              <Mic className={cn(
-                'w-5 h-5 flex-shrink-0',
-                isListening ? 'text-primary animate-pulse' : 'text-muted-foreground/60'
-              )} />
-              <span className="flex-1 text-sm text-muted-foreground/50">
-                {isListening ? 'Listening...' : isProcessing ? 'AI is replying...' : 'Tap to type or speak...'}
-              </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggleListen()
-                }}
-                disabled={isMuted || isProcessing}
-                className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 hover:scale-105',
-                  'border-2 disabled:opacity-50 disabled:cursor-not-allowed',
-                  isListening
-                    ? 'bg-gradient-to-br from-primary to-primary-glow border-primary text-white shadow-lg shadow-primary/30 animate-pulse'
-                    : 'bg-card/70 border-border/50 text-muted-foreground/70 hover:text-primary hover:border-primary/60'
-                )}
-                aria-label={isListening ? 'Stop recording' : 'Tap to speak'}
-              >
-                {isListening
-                  ? <Square className="w-4 h-4 fill-current" />
-                  : <Mic className="w-4 h-4" />
-                }
-              </button>
-            </div>
-          )}
-
-          {/* Composer pill - expanded state */}
-          {(!isCollapsed || hasText) && (
-            <div
+          {/* Composer pill - always expanded */}
+          <div
               className={cn(
                 'relative flex items-end gap-2.5 p-2.5 rounded-3xl border backdrop-blur-sm shadow-xl transition-all duration-300 voice-control-bar',
                 'bg-card/70 border-border/60',
@@ -177,20 +131,7 @@ export function ChatComposer({
                   : 'hover:border-border/80'
               )}
             >
-              {/* ── Left: Collapse button ── */}
-              {!hasText && !isListening && (
-                <button
-                  onClick={() => setIsCollapsed(true)}
-                  className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center bg-card/70 border border-border/50 text-muted-foreground/60 hover:text-muted-foreground transition-all active:scale-95"
-                  aria-label="Collapse input"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 12h16M4 12l4-4M4 12l4 4" />
-                  </svg>
-                </button>
-              )}
-
-              {/* ── Left: Voice-note toggle (when not collapsed) ── */}
+              {/* ── Left: Voice-note toggle ── */}
               {hasText || isListening ? (
                 <div className="relative shrink-0">
                   <button
@@ -239,14 +180,13 @@ export function ChatComposer({
                 onKeyDown={handleKeyDown}
                 onCompositionStart={() => setIsComposing(true)}
                 onCompositionEnd={() => setIsComposing(false)}
-                onFocus={() => setIsCollapsed(false)}
                 placeholder={
                   isListening  ? 'Listening… or type instead'
                   : isProcessing ? 'AI is replying…'
                   : 'Type your message...'
                 }
                 rows={1}
-                autoFocus={!isCollapsed}
+                autoFocus={true}
                 maxLength={4000}
                 disabled={isProcessing}
                 className={cn(
@@ -304,7 +244,6 @@ export function ChatComposer({
                 </button>
               )}
             </div>
-          )}
         </div>
       </div>
     </div>

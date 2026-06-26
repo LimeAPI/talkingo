@@ -20,29 +20,15 @@ export interface Correction {
   note?: string
 }
 
-export interface VocabItem {
-  term: string
-  gloss: string
-  romanization?: string
-  example?: string
-}
-
 export type AudioStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 export interface MessageAudio {
-  /** Lifecycle of the TTS request for this message. */
   status: AudioStatus
-  /** Base64-encoded audio data returned by /api/gemini/tts. */
   data?: string
-  /** Audio format: 'mp3' (Edge TTS) or 'pcm' (Gemini fallback). Default: 'pcm'. */
   format?: 'mp3' | 'pcm'
-  /** Sample rate of the PCM data — 24000 by default for Gemini TTS. Ignored for MP3. */
   sampleRate?: number
-  /** Total duration in milliseconds, available once decoded. */
   durationMs?: number
-  /** Pre-sampled waveform amplitudes (0..1), ~50 buckets. */
   waveform?: number[]
-  /** Voice that was used (for replay consistency). */
   voiceName?: string
 }
 
@@ -51,19 +37,13 @@ export interface ConversationMessage {
   text: string
   isUser: boolean
   corrections?: Correction[]
-  vocab?: VocabItem[]
-  translation?: string
-  emotion?: string
   timestamp?: number
-  /** Voice note attached to this message (AI replies in chat modes). */
   audio?: MessageAudio
-  /** Teaching card — shown below AI messages when there's something to teach. */
-  teachingNote?: TeachingNote | null
+  isInterruption?: boolean
 }
 
 export type LanguageLevel = 'beginner' | 'intermediate' | 'advanced'
 export type CorrectionStyle = 'direct' | 'silent'
-export type SkillDomain = 'vocabulary' | 'grammar' | 'fluency' | 'listening'
 export type ScriptPreference = 'native' | 'latin' | 'both'
 export type LearnerGender = 'masculine' | 'feminine'
 
@@ -76,6 +56,19 @@ export type TargetLanguage =
   | 'en' | 'es' | 'fr' | 'de' | 'it' | 'nl' | 'pl' | 'ro' | 'ru' | 'uk'
   | 'ja' | 'ko' | 'zh' | 'hi' | 'bn' | 'id' | 'mr' | 'ta' | 'te' | 'th' | 'vi'
   | 'ar' | 'tr'
+  // Tier 1 additions
+  | 'ur' | 'pt' | 'fa' | 'sw' | 'pa'
+  // Tier 2 additions
+  | 'tl' | 'hu' | 'el' | 'he'
+
+// Dialect variant type for Arabic, Spanish, and Portuguese regional variations
+export type DialectVariant =
+  | 'ar-EG' | 'ar-LB' | 'ar-SA'   // Arabic: Egyptian, Levantine, Gulf
+  | 'es-ES' | 'es-MX'             // Spanish: Spain, Latin American
+  | 'pt-BR' | 'pt-PT'             // Portuguese: Brazil, Portugal
+
+// Heritage mode supported languages
+export type HeritageLanguage = 'ur' | 'hi' | 'ar' | 'pa' | 'fa' | 'tl' | 'el' | 'he' | 'pt'
 
 export const LANGUAGE_NAMES: Record<TargetLanguage, string> = {
   en: 'English (US)', es: 'Spanish (Spain)', fr: 'French (France)',
@@ -86,12 +79,17 @@ export const LANGUAGE_NAMES: Record<TargetLanguage, string> = {
   bn: 'Bengali (Bangladesh)', id: 'Indonesian (Indonesia)', mr: 'Marathi (India)',
   ta: 'Tamil (India)', te: 'Telugu (India)', th: 'Thai (Thailand)',
   vi: 'Vietnamese (Vietnam)', ar: 'Arabic (Egypt)', tr: 'Turkish (Turkey)',
+  // Tier 1 additions
+  ur: 'Urdu (Pakistan)', pt: 'Portuguese (Brazil)', fa: 'Persian (Iran)',
+  sw: 'Swahili (Tanzania)', pa: 'Punjabi (India)',
+  // Tier 2 additions
+  tl: 'Filipino (Philippines)', hu: 'Hungarian (Hungary)',
+  el: 'Greek (Greece)', he: 'Hebrew (Israel)',
 }
 
 export type PersonaId = 'eli' | 'alex' | 'dr-luma' | 'sofia' | 'riko' | 'marco'
 
 export type PersonaRegister = 'casual' | 'mixed' | 'formal'
-
 
 export interface AIPersona {
   id: PersonaId
@@ -101,17 +99,12 @@ export interface AIPersona {
   conversationStyle: string
   gender: 'male' | 'female'
   voiceName: string
+  sampleSentence?: string
 }
-
-/**
- * A single vocabulary item tracked in the spaced repetition system.
- */
-
 
 // ─── Conversation State ───────────────────────────────────────────────────────
 
 export interface ConversationState {
-  /** Talkingo 12-level system (1-12). */
   talkingoLevel: number
   topic: ConversationTopic | string
   correctionStyle: CorrectionStyle
@@ -121,12 +114,13 @@ export interface ConversationState {
   nativeLanguage?: TargetLanguage | string
   learningGoal?: LearningGoal
   currentUnitId?: string
-  /** Custom scenario prompt typed by the user (from TalkScreen custom input). */
   customPrompt?: string
-  /** Cross-session AI memory paragraph — injected into every system prompt. */
   memoryLifeline?: string
-  /** User-written notes for the AI — injected into every system prompt. */
   userNotes?: string
+  /** Structured memory planner injection (replaces memoryLifeline when available) */
+  practiceTargets?: string
+  /** User's preferred script for non-Latin languages */
+  preferredScript?: ScriptPreference
 }
 
 export interface UserPreferences {
@@ -143,58 +137,29 @@ export interface UserPreferences {
   currentUnitId?: string
   preferredScript?: ScriptPreference
   learnerGender?: LearnerGender
+  dialect?: DialectVariant
+  heritageMode?: boolean
+  uiLanguage?: string  // ISO 639-1 code for UI localization
 }
-
-// ─── Progress / Session Tracking ──────────────────────────────────────────────
-
-/**
- * Structured weak pattern with type safety.
- * Replaces the old string[] approach for better AI guidance and UI display.
- */
-
-
-// ─── Character Memory (story continuity) ─────────────────────────────────────
-
-/**
- * Per-character rolling memory. One row per (user × persona × language).
- * Updated after every session. Used to open future sessions with personal
- * references ("How did the interview go?").
- */
-
 
 // ─── Gemini Response Types ────────────────────────────────────────────────────
 
-export interface TeachingNote {
-  type: 'correction' | 'expression' | 'grammar' | 'idiom' | 'culture'
-  title: string
-  content: string
-}
-
 export interface GeminiConversationResponse {
   aiResponse: string
-  translation?: string
   corrections: Correction[]
-  vocab?: VocabItem[]
-  emotion: string
   unitComplete?: boolean
-  domainSignals?: Partial<Record<SkillDomain, 'up' | 'same' | 'down'>>
-  teachingNote?: TeachingNote | null
-  /** Cross-session memory: single-paragraph summary of what the AI knows about the user. */
   memoryUpdate?: string
+  responseParts?: string[]
 }
 
 export interface GeminiOpenerResponse {
   aiResponse: string
-  translation?: string
-  emotion: string
-  vocab?: VocabItem[]
 }
 
 export interface GeminiAssessmentResponse {
   talkingoLevel: number
   encouragement: string
 }
-
 
 // ─── User / Auth Types ────────────────────────────────────────────────────────
 

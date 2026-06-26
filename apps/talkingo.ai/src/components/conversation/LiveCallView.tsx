@@ -27,6 +27,7 @@ import {
 } from '@/lib/api/live-client'
 import { VoiceActivityDetector } from '@/lib/utils/vad'
 import type { ConversationState } from '@talkingo/shared/types'
+import { buildOpenerPrompt } from '@talkingo/shared/gemini'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -227,7 +228,7 @@ export function LiveCallView({
           vadRef.current.start(micStream)
         }
 
-        service.sendText("Let's start our conversation.")
+        service.sendText(buildOpenerPrompt(state, state.userName))
       })
       .catch((err) => {
         console.error('[LiveCall] Connection failed:', err)
@@ -293,8 +294,26 @@ export function LiveCallView({
     error || liveStatus === 'connecting' ? 'thinking' :
     'listening'
 
-  // Only show last 5 lines in the subtitle view
-  const visibleSubtitles = useMemo(() => subtitles.slice(-5), [subtitles])
+  // Track if user has manually scrolled up to avoid auto-scroll snapping back
+  const [userScrolledUp, setUserScrolledUp] = useState(false)
+  const subtitleContainerRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll only if user hasn't manually scrolled up
+  useEffect(() => {
+    if (!userScrolledUp && subtitleContainerRef.current) {
+      subtitleContainerRef.current.scrollTo({
+        top: subtitleContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      })
+    }
+  }, [subtitles, userScrolledUp])
+
+  const handleSubtitleScroll = useCallback(() => {
+    const el = subtitleContainerRef.current
+    if (!el) return
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+    if (isNearBottom) setUserScrolledUp(false)
+  }, [])
 
   const personaId = state.persona ?? 'eli'
 
@@ -313,6 +332,12 @@ export function LiveCallView({
                 : 'bg-muted/8 scale-90'
           )}
         />
+      </div>
+
+      {/* ── Swipe-down drag handle ── */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-0.5 opacity-40">
+        <div className="w-9 h-1 rounded-full bg-foreground/20" />
+        <span className="text-[8px] text-foreground/30 font-medium tracking-wider">Pull down to end</span>
       </div>
 
       {/* ── Top bar — status + timer merged ── */}
@@ -345,13 +370,17 @@ export function LiveCallView({
           </span>
         </div>
 
-        {/* Muted indicator — floats beside the status bar */}
+        {/* Muted indicator — prominent banner + floating badge */}
         {isMuted && !error && (
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 mt-4">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/12 border border-red-500/30 text-[10px] font-semibold text-red-400">
-              <MicOff className="w-3 h-3" /> Muted
-            </span>
-          </div>
+          <>
+            {/* Full-width banner */}
+            <div className="absolute left-0 right-0 -bottom-3 flex justify-center">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/15 border border-red-500/40 text-[11px] font-semibold text-red-400 shadow-lg backdrop-blur-md">
+                <MicOff className="w-3.5 h-3.5" />
+                Mic is muted — tap mic to unmute
+              </span>
+            </div>
+          </>
         )}
       </div>
 
@@ -393,21 +422,25 @@ export function LiveCallView({
         />
       </div>
 
-      {/* ── Subtitle area — chat-style bubbles ── */}
+      {/* ── Subtitle area — chat-style bubbles, full scrollable ── */}
       <div className="flex-1 min-h-0 flex flex-col justify-end px-4 pb-3">
         {showSubtitles && !error && (
           <div
-            ref={subtitleRef}
-            className="overflow-y-auto max-h-[240px] space-y-2.5 px-1 custom-scrollbar"
+            ref={(el) => {
+              subtitleRef.current = el
+              subtitleContainerRef.current = el
+            }}
+            onScroll={handleSubtitleScroll}
+            className="overflow-y-auto flex-1 space-y-2.5 px-1 custom-scrollbar pb-1"
           >
-            {visibleSubtitles.length === 0 ? (
+            {subtitles.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <p className="text-sm text-muted-foreground/40 font-medium">
                   {isConnecting ? 'Setting up the call…' : 'Conversation will appear here…'}
                 </p>
               </div>
             ) : (
-              visibleSubtitles.map((line) => (
+              subtitles.map((line) => (
                 <SubtitleBubble
                   key={line.id}
                   line={line}

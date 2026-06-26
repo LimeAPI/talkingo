@@ -92,6 +92,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // ── Free tier limit ──────────────────────────────────────────────
+    const { getSubscription, incrementFreeUsage } = await import('@/lib/appwrite-server')
+    const subscription = await getSubscription(userId)
+    const isActive = subscription?.status === 'active' || subscription?.status === 'trialing'
+    if (!isActive) {
+      const FREE_DAILY_LIMIT = 6
+      const newCount = await incrementFreeUsage(userId)
+      if (newCount > FREE_DAILY_LIMIT) {
+        return NextResponse.json(
+          { error: 'free_limit_reached', message: 'Daily message limit reached. Upgrade for unlimited conversations.' },
+          { status: 429 }
+        )
+      }
+    }
+
     try {
       // ── Assessment ───────────────────────────────────────────────────────
       if (type === 'assessment') {

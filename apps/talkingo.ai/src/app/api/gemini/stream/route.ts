@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
     generationConfig: {
       temperature: 0.85,
       maxOutputTokens: 4096,
+      responseMimeType: 'application/json',
       thinkingConfig: { thinkingBudget: 1024 },
     },
     systemInstruction: { parts: [{ text: systemInstruction }] },

@@ -6,19 +6,23 @@
  * Shown to active/trialing/past_due users in ProfileScreen. Provides:
  *   - Current plan summary (label, price, billing date / trial end)
  *   - Inline plan switcher (monthly ↔ yearly) with one-tap upgrade
- *   - Cancel button (cancel at period end)
+ *   - Cancel button (cancel at period end) with a 5-second Undo window
  *   - Reactivate button (when scheduled to cancel)
- *   - Update payment method (opens Stripe portal)
+ *   - Provider name display (which provider powers the subscription)
+ *   - Past-due recovery action that opens the managed billing surface
+ *   - Update payment method (opens the managed billing surface)
  *
- * All actions go through our own API routes, except payment-method update
- * which routes to the Stripe-hosted portal where card UI is required.
+ * Every action is provider-agnostic and goes through the unified
+ * `/api/billing/*` routes. The manage surface (`/api/billing/manage`) resolves
+ * the provider from the stored subscription and returns the provider-hosted
+ * portal URL where card UI is required.
  */
 
 import { useEffect, useState, useRef } from 'react'
 import { cn } from '@talkingo/shared/utils'
 import {
   Crown, Check, RefreshCw, ArrowRight, AlertCircle, AlertTriangle,
-  CreditCard, X,
+  CreditCard, X, ReceiptText, ChevronDown,
 } from 'lucide-react'
 import { authFetch } from '@/lib/api/auth-fetch'
 import {
@@ -30,6 +34,12 @@ import {
   type SubscriptionInfo,
 } from '@/lib/subscription/use-subscription'
 import { PUBLIC_PLANS, type PlanId } from '@/lib/subscription/public-plans'
+import { ProviderBadge } from './ProviderBadge'
+import { BillingHistoryList } from './BillingHistoryList'
+import type { ProviderId } from '@/lib/payments/provider'
+
+/** Providers we can render a friendly badge for. */
+const KNOWN_PROVIDERS: ProviderId[] = ['stripe', 'dodopayments']
 
 interface SubscriptionManagerProps {
   userId: string
@@ -42,6 +52,7 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
   const [info, setInfo] = useState<SubscriptionInfo>(() => getSubscriptionInfo(userId))
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [showPlanSwitch, setShowPlanSwitch] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [action, setAction] = useState<ActionState>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
@@ -61,7 +72,7 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
 
   const refresh = async () => {
     try {
-      const res = await authFetch('/api/stripe/status', {
+      const res = await authFetch('/api/billing/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -75,6 +86,7 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
         trialEndsAt: fresh.trialEndsAt,
         currentPeriodEnd: fresh.currentPeriodEnd,
         cancelAtPeriodEnd: fresh.cancelAtPeriodEnd ?? false,
+        provider: fresh.provider,
         verifiedAt: Date.now(),
       }
       saveSubscriptionInfo(updated, userId)
@@ -87,7 +99,7 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
     setAction('loading')
     setErrorMsg(null)
     try {
-      const res = await authFetch('/api/stripe/cancel', { method: 'POST' })
+      const res = await authFetch('/api/billing/cancel', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
         setErrorMsg(data.message || 'Could not cancel.')
@@ -118,7 +130,7 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
     setAction('loading')
     setErrorMsg(null)
     try {
-      const res = await authFetch('/api/stripe/reactivate', { method: 'POST' })
+      const res = await authFetch('/api/billing/reactivate', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
         setErrorMsg(data.message || 'Could not undo.')
@@ -139,7 +151,7 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
     setAction('loading')
     setErrorMsg(null)
     try {
-      const res = await authFetch('/api/stripe/reactivate', { method: 'POST' })
+      const res = await authFetch('/api/billing/reactivate', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
         setErrorMsg(data.message || 'Could not reactivate.')
@@ -160,7 +172,7 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
     setAction('loading')
     setErrorMsg(null)
     try {
-      const res = await authFetch('/api/stripe/change-plan', {
+      const res = await authFetch('/api/billing/change-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: newPlan }),
@@ -186,7 +198,7 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
     setAction('loading')
     setErrorMsg(null)
     try {
-      const res = await authFetch('/api/stripe/portal', { method: 'POST' })
+      const res = await authFetch('/api/billing/manage', { method: 'POST' })
       const data = await res.json()
       if (res.ok && data.url) {
         window.location.href = data.url
@@ -213,6 +225,9 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
   const showUpgrade = info.plan === 'monthly' && !isCanceling
   const showDowngrade = info.plan === 'yearly' && !isCanceling
   const loading = action === 'loading'
+  const knownProvider = (info.provider && KNOWN_PROVIDERS.includes(info.provider as ProviderId))
+    ? (info.provider as ProviderId)
+    : null
 
   return (
     <div className="rounded-2xl bg-card/50 border border-border/30 p-4 space-y-3">
@@ -235,6 +250,12 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
                   ? `Renews ${billingLabel}`
                   : 'Active subscription'}
           </p>
+          {/* Provider name display (Req 12.6) */}
+          {knownProvider && (
+            <div className="mt-1.5">
+              <ProviderBadge provider={knownProvider} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -413,6 +434,28 @@ export function SubscriptionManager({ userId, onChanged }: SubscriptionManagerPr
             >
               Cancel subscription
             </button>
+          )}
+        </div>
+      )}
+
+      {/* Billing history (Req 12.1) — collapsible sub-section */}
+      {!confirmCancel && !showPlanSwitch && (
+        <div className="pt-1">
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="w-full px-3 py-2 rounded-xl border border-border/40 text-xs font-medium text-muted-foreground hover:bg-muted/30 transition-colors flex items-center justify-center gap-1.5"
+            aria-expanded={showHistory}
+          >
+            <ReceiptText className="w-3.5 h-3.5" />
+            {showHistory ? 'Hide billing history' : 'View billing history'}
+            <ChevronDown
+              className={cn('w-3.5 h-3.5 transition-transform', showHistory && 'rotate-180')}
+            />
+          </button>
+          {showHistory && (
+            <div className="mt-2">
+              <BillingHistoryList />
+            </div>
           )}
         </div>
       )}

@@ -10,7 +10,6 @@
  * - Levels: 1-4 only (8 locked)
  * - Modes: Chat only (handsfree + live call locked)
  * - Voice recording: Locked (can listen to AI voice notes, can't record)
- * - History: Last 3 sessions only
  * - Session recap: Basic (encouragement + corrections only, no vocab/native-would-say)
  * - Phrase bank: Locked
  *
@@ -32,12 +31,18 @@ export const FREE_TIER = {
   ALLOWED_PERSONAS: ['eli', 'alex'] as string[],
   /** Max level accessible */
   MAX_LEVEL: 4,
-  /** Allowed interaction modes */
+  /**
+   * Allowed interaction modes. Only 'manual' (text chat) is free; voice
+   * modes are gated behind a paid plan. The 'handsfree' / 'live' / 'native'
+   * modes are enforced at the call site via `isModeAllowed()`.
+   */
   ALLOWED_MODES: ['manual'] as string[],
-  /** Max sessions visible in history */
-  MAX_HISTORY_SESSIONS: 3,
-  /** Whether voice recording (user → AI) is allowed */
-  VOICE_RECORDING: true,
+  /**
+   * Free users can listen to AI voice notes but cannot record their own
+   * voice (mic capture is gated by the ALLOWED_MODES check above). Keeping
+   * the flag as a single source of truth in case we need to flip it later.
+   */
+  VOICE_RECORDING: false,
   /** Whether phrase bank is accessible */
   PHRASE_BANK: false,
   /** Whether full recap is shown (vocab, native-would-say, planted phrase) */

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { AI_PERSONAS } from '@talkingo/shared/gemini/personas'
 import type { PersonaId } from '@talkingo/shared/types'
+import type { ScriptPreference } from '@talkingo/shared/types'
 import { LANGUAGES } from '@talkingo/shared/languages'
 import { updateUserName } from '@/lib/auth/auth'
 import { VoicePicker } from '../settings/VoicePicker'
@@ -56,6 +57,10 @@ interface SettingsDrawerProps {
   selectedChatVoice?: string
   onLiveVoiceChange?: (voice: string) => void
   onChatVoiceChange?: (voice: string) => void
+  /** Script preference toggle */
+  showScriptToggle?: boolean
+  effectiveScript?: ScriptPreference
+  onScriptChange?: (script: ScriptPreference) => void
 }
 
 export function SettingsDrawer({
@@ -67,6 +72,7 @@ export function SettingsDrawer({
   learningPrefs, onLearningPrefsChange, onReassess,
   currentPersona = 'eli', onPersonaChange, selectedLiveVoice = 'Aoede', selectedChatVoice = '',
   onLiveVoiceChange = () => {}, onChatVoiceChange = () => {},
+  showScriptToggle, effectiveScript, onScriptChange,
 }: SettingsDrawerProps) {
   const { user, signOut, refresh } = useAuth()
   const [isEditingName, setIsEditingName] = useState(false)
@@ -99,12 +105,12 @@ export function SettingsDrawer({
           {/* ── Account ── */}
           {user && (
             <section>
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2 px-1">Account</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/50 mb-2 px-1">Account</h3>
               <div className="settings-group">
                 <div className="settings-row">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0 shadow-md">
                     <span className="text-sm font-bold text-white">
-                      {user.name?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
+                      {user.displayName?.charAt(0).toUpperCase() || user.email.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   {isEditingName ? (
@@ -127,12 +133,12 @@ export function SettingsDrawer({
                     </div>
                   ) : (
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{user.name || 'User'}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{user.displayName || 'User'}</p>
+                      <p className="text-xs text-foreground/60 truncate">{user.email}</p>
                     </div>
                   )}
                   {!isEditingName && (
-                    <button onClick={() => { setEditName(user.name || ''); setIsEditingName(true) }}
+                    <button onClick={() => { setEditName(user.displayName || ''); setIsEditingName(true) }}
                       className="w-7 h-7 rounded-lg hover:bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
@@ -151,11 +157,11 @@ export function SettingsDrawer({
           {/* ── Learning ── */}
           {learningPrefs && (
             <section>
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2 px-1">Learning</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/50 mb-2 px-1">Learning</h3>
               <div className="space-y-2">
                 <div className="settings-group">
                   <div className="settings-row flex-col items-start gap-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">I&apos;m learning</span>
+                    <span className="text-xs font-medium text-foreground/50">I&apos;m learning</span>
                     <select
                       value={learningPrefs.targetLanguage || 'en'}
                       onChange={(e) => onLearningPrefsChange?.({ targetLanguage: e.target.value })}
@@ -167,7 +173,7 @@ export function SettingsDrawer({
                     </select>
                   </div>
                   <div className="settings-row flex-col items-start gap-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">My native language</span>
+                    <span className="text-xs font-medium text-foreground/50">My native language</span>
                     <select
                       value={learningPrefs.nativeLanguage || ''}
                       onChange={(e) => onLearningPrefsChange?.({ nativeLanguage: e.target.value })}
@@ -184,7 +190,7 @@ export function SettingsDrawer({
                 <div className="settings-group">
                   <div className="settings-row flex-col items-start gap-2">
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-medium text-muted-foreground">My level</span>
+                      <span className="text-xs font-medium text-foreground/50">My level</span>
                       <span className="text-xs font-bold text-primary">Lv.{learningPrefs.talkingoLevel || 1}</span>
                     </div>
                     <div className="flex items-center gap-2 w-full">
@@ -212,7 +218,7 @@ export function SettingsDrawer({
 
                 <div className="settings-group">
                   <div className="settings-row flex-col items-start gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">Learning goal</span>
+                    <span className="text-xs font-medium text-foreground/50">Learning goal</span>
                     <div className="grid grid-cols-2 gap-1.5 w-full">
                       {([
                         { id: 'travel',     label: 'Travel',     Icon: Plane },
@@ -227,7 +233,7 @@ export function SettingsDrawer({
                             'px-2.5 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5',
                             learningPrefs.learningGoal === g.id
                               ? 'bg-primary/12 border border-primary/35 text-primary'
-                              : 'bg-muted/30 border border-border/30 text-foreground/70 hover:border-border/60'
+                              : 'bg-card/60 border border-border/40 text-foreground/60 hover:border-border/60'
                           )}
                         >
                           <g.Icon className="w-3 h-3 flex-shrink-0" />
@@ -242,7 +248,7 @@ export function SettingsDrawer({
                   <div className="settings-row">
                     <div className="flex-1">
                       <p className="text-sm font-medium text-foreground">Direct corrections</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-foreground/60">
                         {learningPrefs.correctionStyle === 'direct' ? 'AI corrects you explicitly' : 'AI uses natural recasts'}
                       </p>
                     </div>
@@ -254,21 +260,54 @@ export function SettingsDrawer({
                     />
                   </div>
                 </div>
-              </div>
+
+                {/* Script preference toggle — only shown for multi-script languages */}
+                {showScriptToggle && onScriptChange && (
+                  <div className="settings-group">
+                    <div className="settings-row flex-col items-start gap-2">
+                      <span className="text-xs font-medium text-foreground/50">Script preference</span>
+                      <div className="grid grid-cols-3 gap-1.5 w-full">
+                        {([
+                          { value: 'native' as const, label: 'Native' },
+                          { value: 'both' as const, label: 'Both' },
+                          { value: 'latin' as const, label: 'Latin' },
+                        ]).map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => onScriptChange(opt.value)}
+                            className={cn(
+                              'px-2.5 py-2 rounded-lg text-xs font-medium transition-all text-center',
+                              effectiveScript === opt.value
+                                ? 'bg-primary/12 border border-primary/35 text-primary'
+                                : 'bg-card/60 border border-border/40 text-foreground/60 hover:border-border/60'
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-foreground/40">
+                        {effectiveScript === 'native' ? 'Messages shown in native script' :
+                         effectiveScript === 'latin' ? 'Messages shown in romanized text' :
+                         'Native script with romanization alongside'}
+                      </p>
+                    </div>
+                  </div>
+                )}              </div>
             </section>
           )}
 
           {/* ── Audio ── */}
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2 px-1">Audio</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/50 mb-2 px-1">Audio</h3>
             <div className="settings-group">
               <div className="settings-row">
-                <Mic className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <Mic className="w-4 h-4 text-foreground/50 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Mic sensitivity</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-muted-foreground w-8 text-right">{micSensitivity}%</span>
+                  <span className="text-xs font-mono text-foreground/50 w-8 text-right">{micSensitivity}%</span>
                   <input type="range" min="0" max="100" value={micSensitivity}
                     onChange={(e) => onMicSensitivity(Number(e.target.value))}
                     className="custom-range-apple w-20" />
@@ -281,12 +320,12 @@ export function SettingsDrawer({
                 <Switch checked={noiseCancellation} onCheckedChange={onNoiseCancellation} />
               </div>
               <div className="settings-row">
-                <Volume2 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <Volume2 className="w-4 h-4 text-foreground/50 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Voice speed</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-muted-foreground w-8 text-right">{voiceSpeed.toFixed(1)}×</span>
+                  <span className="text-xs font-mono text-foreground/50 w-8 text-right">{voiceSpeed.toFixed(1)}×</span>
                   <input type="range" min="0.5" max="2.0" step="0.1" value={voiceSpeed}
                     onChange={(e) => onVoiceSpeed(Number(e.target.value))}
                     className="custom-range-apple w-20" />
@@ -295,7 +334,7 @@ export function SettingsDrawer({
               <div className="settings-row">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Auto-play voice notes</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-foreground/60">
                     {autoPlayVoiceNotes === 'always' ? 'Always plays' : autoPlayVoiceNotes === 'never' ? 'Never plays' : 'Hands-free only'}
                   </p>
                 </div>
@@ -313,7 +352,7 @@ export function SettingsDrawer({
           </section>
 
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2 px-1">Voice</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/50 mb-2 px-1">Voice</h3>
             <div className="settings-group">
               <div className="px-3 py-3">
                 <VoicePicker
@@ -328,13 +367,13 @@ export function SettingsDrawer({
           </section>
 
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2 px-1">Appearance</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/50 mb-2 px-1">Appearance</h3>
             <div className="settings-group">
               <div className="settings-row">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Theme</p>
                 </div>
-                <div className="flex items-center gap-1 p-0.5 rounded-xl bg-muted/40 border border-border/30">
+                <div className="flex items-center gap-1 p-0.5 rounded-xl bg-card/60 border border-border/40">
                   {([
                     { value: 'light', Icon: Sun },
                     { value: 'auto',  Icon: Monitor },
@@ -347,7 +386,7 @@ export function SettingsDrawer({
                         'w-8 h-7 rounded-lg flex items-center justify-center transition-all',
                         theme === value
                           ? 'bg-card shadow-sm text-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
+                          : 'text-foreground/50 hover:text-foreground'
                       )}
                     >
                       <Icon className="w-3.5 h-3.5" />
@@ -359,7 +398,7 @@ export function SettingsDrawer({
           </section>
 
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2 px-1">AI Partner</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/50 mb-2 px-1">AI Partner</h3>
             <div className="grid grid-cols-2 gap-2">
               {AI_PERSONAS.map((persona) => {
                 const unlocked = true
@@ -385,7 +424,7 @@ export function SettingsDrawer({
                       <span className={cn('text-xs font-semibold block truncate', selected ? 'text-primary' : 'text-foreground')}>
                         {persona.name}{!unlocked && ' 🔒'}
                       </span>
-                      <span className="text-[10px] text-muted-foreground block leading-snug line-clamp-2">
+                      <span className="text-[10px] text-foreground/60 block leading-snug line-clamp-2">
                         {persona.description}
                       </span>
                     </div>
@@ -397,7 +436,7 @@ export function SettingsDrawer({
           </section>
 
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-2 px-1">Data</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-foreground/50 mb-2 px-1">Data</h3>
             <div className="settings-group">
               <div className="settings-row">
                 <div className="flex-1">
