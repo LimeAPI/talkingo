@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talkingo — Bento Grid</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#F5F5F7',
+            surface: '#FFFFFF',
+            'surface-2': '#F2F2F7',
+            primary: '#FF6A45',
+            'primary-soft': '#FFF0EC',
+            coral: '#FF8A65',
+            lavender: '#B39DDB',
+            mint: '#80CBC4',
+            peach: '#FFCCBC',
+            text: '#1D1D1F',
+            'text-2': '#86868B',
+            'text-3': '#D2D2D7',
+            border: '#E8E8ED',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Manrope', 'sans-serif'],
+          },
+          borderRadius: {
+            '3xl': '1.25rem',
+            '4xl': '1.75rem',
+            '5xl': '2.25rem',
+          },
+          boxShadow: {
+            'soft': '0 2px 16px rgba(0,0,0,0.06)',
+            'float': '0 12px 40px rgba(0,0,0,0.08)',
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #F5F5F7; }
+    .font-display { font-family: 'Manrope', sans-serif; }
+    .gradient-coral { background: linear-gradient(135deg, #FF8A65 0%, #FF6A45 100%); }
+    .gradient-lavender { background: linear-gradient(135deg, #D1C4E9 0%, #B39DDB 100%); }
+    .gradient-mint { background: linear-gradient(135deg, #B2DFDB 0%, #80CBC4 100%); }
+    .gradient-peach { background: linear-gradient(135deg, #FFE0B2 0%, #FFCCBC 100%); }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: #FF6A45; cursor: pointer; margin-top: -8px;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%; height: 4px; border-radius: 2px; background: #E8E8ED;
+    }
+  </style>
+</head>
+<body class="text-text antialiased min-h-[100dvh] pb-32">
+
+  <header class="sticky top-0 z-40 bg-bg/80 backdrop-blur-xl">
+    <div class="max-w-lg mx-auto flex items-center justify-between px-5 py-3">
+      <div class="flex items-center gap-3">
+        <img src="https://i.pravatar.cc/150?img=12" class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-soft" alt="Avatar" />
+      </div>
+      <span class="font-display font-bold text-lg">Talkingo</span>
+      <button class="w-9 h-9 rounded-full bg-surface shadow-soft flex items-center justify-center">
+        <span class="material-symbols-outlined text-text-2">notifications</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-lg mx-auto px-5 pt-6">
+
+    <!-- Profile Hero Card -->
+    <section class="bg-surface rounded-5xl shadow-soft p-6 mb-5">
+      <div class="flex items-center gap-4">
+        <img src="https://i.pravatar.cc/150?img=12" class="w-16 h-16 rounded-2xl object-cover" alt="Alex" />
+        <div>
+          <h1 class="font-display font-bold text-xl">Alex</h1>
+          <p class="text-text-2 text-sm">alex.learner@example.com</p>
+        </div>
+        <button class="ml-auto w-9 h-9 rounded-full bg-surface-2 flex items-center justify-center">
+          <span class="material-symbols-outlined text-text">edit</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Bento Grid -->
+    <div class="grid grid-cols-2 gap-4 mb-5">
+
+      <!-- Stats Large -->
+      <div class="col-span-2 bg-surface rounded-4xl shadow-soft p-5 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl gradient-coral flex items-center justify-center text-white">
+            <span class="material-symbols-outlined">local_fire_department</span>
+          </div>
+          <div>
+            <p class="font-display font-bold text-2xl">7</p>
+            <p class="text-text-2 text-xs">Day streak</p>
+          </div>
+        </div>
+        <div class="flex gap-6">
+          <div class="text-center">
+            <p class="font-display font-bold text-lg">24</p>
+            <p class="text-text-2 text-[11px]">Chats</p>
+          </div>
+          <div class="text-center">
+            <p class="font-display font-bold text-lg">3.2h</p>
+            <p class="text-text-2 text-[11px]">Minutes</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Language Card -->
+      <div class="bg-surface rounded-4xl shadow-soft p-5 flex flex-col justify-between h-40">
+        <div class="w-10 h-10 rounded-2xl gradient-lavender flex items-center justify-center text-white">
+          <span class="material-symbols-outlined">language</span>
+        </div>
+        <div>
+          <p class="text-2xl mb-1">🇪🇸</p>
+          <p class="font-display font-bold text-sm">Spanish</p>
+          <p class="text-text-2 text-xs">B1 Level</p>
+        </div>
+      </div>
+
+      <!-- Audio Card -->
+      <div class="bg-surface rounded-4xl shadow-soft p-5 flex flex-col justify-between h-40">
+        <div class="w-10 h-10 rounded-2xl gradient-mint flex items-center justify-center text-white">
+          <span class="material-symbols-outlined">volume_up</span>
+        </div>
+        <div>
+          <p class="font-display font-bold text-sm">Audio</p>
+          <p class="text-text-2 text-xs">Speed 1.0x</p>
+          <p class="text-text-2 text-xs">Auto-play on</p>
+        </div>
+      </div>
+
+      <!-- Level -->
+      <div class="col-span-2 bg-surface rounded-4xl shadow-soft p-5">
+        <div class="flex items-center justify-between mb-3">
+          <p class="font-display font-bold text-sm">Level</p>
+          <span class="px-3 py-1 rounded-full bg-primary-soft text-primary text-xs font-bold">5</span>
+        </div>
+        <div class="flex gap-2">
+          <div class="flex-1 h-2 rounded-full bg-text-3"></div>
+          <div class="flex-1 h-2 rounded-full bg-text-3"></div>
+          <div class="flex-1 h-2 rounded-full bg-primary"></div>
+          <div class="flex-1 h-2 rounded-full bg-text-3"></div>
+          <div class="flex-1 h-2 rounded-full bg-text-3"></div>
+          <div class="flex-1 h-2 rounded-full bg-text-3"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-[10px] text-text-2">
+          <span>A1</span><span>A2</span><span class="text-primary font-bold">B1</span><span>B2</span><span>C1</span><span>C2</span>
+        </div>
+      </div>
+
+      <!-- AI Partner -->
+      <div class="bg-surface rounded-4xl shadow-soft p-5">
+        <div class="w-10 h-10 rounded-2xl gradient-peach flex items-center justify-center text-white mb-3">
+          <span class="material-symbols-outlined">smart_toy</span>
+        </div>
+        <p class="font-display font-bold text-sm">Elena</p>
+        <p class="text-text-2 text-xs">Spain Accent</p>
+        <img src="https://i.pravatar.cc/150?img=5" class="w-10 h-10 rounded-full mt-3 ring-2 ring-bg" alt="Elena" />
+      </div>
+
+      <!-- Premium -->
+      <div class="bg-surface rounded-4xl shadow-soft p-5 flex flex-col justify-between">
+        <div class="w-10 h-10 rounded-2xl bg-surface-2 flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary">workspace_premium</span>
+        </div>
+        <div>
+          <p class="font-display font-bold text-sm">Premium</p>
+          <p class="text-text-2 text-xs mb-3">Unlimited chats</p>
+          <button class="w-full py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-soft">
+            Upgrade
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Settings List -->
+    <section class="bg-surface rounded-4xl shadow-soft overflow-hidden mb-5">
+      <div class="flex items-center justify-between p-4 border-b border-border">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-text-2">palette</span>
+          <span class="text-sm font-medium">Appearance</span>
+        </div>
+        <span class="text-text-2 text-sm">Light</span>
+      </div>
+      <div class="flex items-center justify-between p-4 border-b border-border">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-text-2">translate</span>
+          <span class="text-sm font-medium">Native Language</span>
+        </div>
+        <span class="text-text-2 text-sm">English</span>
+      </div>
+      <div class="flex items-center justify-between p-4">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-text-2">logout</span>
+          <span class="text-sm font-medium text-red-500">Sign Out</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-surface rounded-full shadow-float px-2 py-2 flex items-center gap-1">
+    <a href="#" class="w-12 h-12 rounded-full flex items-center justify-center text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined">chat_bubble</span>
+    </a>
+    <a href="#" class="w-12 h-12 rounded-full flex items-center justify-center text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined">auto_stories</span>
+    </a>
+    <a href="#" class="w-14 h-14 rounded-full gradient-coral flex items-center justify-center text-white shadow-float -mt-4">
+      <span class="material-symbols-outlined text-2xl">mic</span>
+    </a>
+    <a href="#" class="w-12 h-12 rounded-full flex items-center justify-center text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined">history</span>
+    </a>
+    <a href="#" class="w-12 h-12 rounded-full flex items-center justify-center text-text bg-surface-2">
+      <span class="material-symbols-outlined">person</span>
+    </a>
+  </nav>
+
+</body>
+</html>

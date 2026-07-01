@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talkingo — Clean Profile</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#F2F2F7',
+            surface: '#FFFFFF',
+            'surface-2': '#F7F7F9',
+            primary: '#FF6A45',
+            'primary-soft': '#FFF0EC',
+            text: '#1C1C1E',
+            'text-2': '#8E8E93',
+            'text-3': '#C7C7CC',
+            border: '#E5E5EA',
+            success: '#34C759',
+            'success-soft': '#E8F9EE',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Manrope', 'sans-serif'],
+          },
+          borderRadius: {
+            '2xl': '1rem',
+            '3xl': '1.25rem',
+            '4xl': '1.5rem',
+            '5xl': '2rem',
+          },
+          boxShadow: {
+            'card': '0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.06)',
+            'card-hover': '0 4px 12px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.08)',
+            'float': '0 8px 30px rgba(0,0,0,0.12)',
+            'button': '0 4px 14px rgba(255,106,69,0.25)',
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #F2F2F7; }
+    .font-display { font-family: 'Manrope', sans-serif; }
+    .toggle-track { transition: background 0.2s ease; }
+    .toggle-thumb { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: #FF6A45; cursor: pointer; margin-top: -8px;
+      box-shadow: 0 2px 6px rgba(255,106,69,0.4);
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%; height: 4px; border-radius: 2px; background: #E5E5EA;
+    }
+  </style>
+</head>
+<body class="text-text antialiased min-h-[100dvh] pb-28">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-bg/80 backdrop-blur-xl">
+    <div class="max-w-lg mx-auto flex items-center justify-between px-5 py-3">
+      <div class="flex items-center gap-3">
+        <img src="https://i.pravatar.cc/150?img=12" class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" alt="Avatar" />
+        <span class="font-display font-bold text-lg">Talkingo</span>
+      </div>
+      <button class="w-10 h-10 rounded-full bg-surface shadow-card flex items-center justify-center hover:shadow-card-hover transition-shadow">
+        <span class="material-symbols-outlined text-text-2">notifications</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-lg mx-auto px-5 pt-6 space-y-5">
+
+    <!-- Profile Hero -->
+    <section class="bg-surface rounded-5xl shadow-card p-6 flex flex-col items-center text-center">
+      <div class="relative mb-4">
+        <img src="https://i.pravatar.cc/150?img=12" class="w-20 h-20 rounded-full object-cover ring-4 ring-bg shadow-sm" alt="Alex" />
+        <button class="absolute bottom-0 right-0 w-7 h-7 bg-primary text-white rounded-full flex items-center justify-center shadow-button">
+          <span class="material-symbols-outlined text-[14px]">edit</span>
+        </button>
+      </div>
+      <h1 class="font-display font-bold text-2xl text-text">Alex</h1>
+      <p class="text-text-2 text-sm mt-1">alex.learner@example.com</p>
+      <div class="flex items-center gap-2 mt-3 px-3 py-1.5 bg-success-soft rounded-full">
+        <span class="w-2 h-2 rounded-full bg-success"></span>
+        <span class="text-xs font-medium text-success">7 day streak</span>
+      </div>
+    </section>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-3 gap-3">
+      <div class="bg-surface rounded-3xl shadow-card p-4 text-center">
+        <span class="material-symbols-outlined text-primary text-2xl">local_fire_department</span>
+        <p class="font-display font-bold text-xl mt-1">7</p>
+        <p class="text-text-3 text-[11px] uppercase tracking-wide font-medium mt-0.5">Streak</p>
+      </div>
+      <div class="bg-surface rounded-3xl shadow-card p-4 text-center">
+        <span class="material-symbols-outlined text-primary text-2xl">chat</span>
+        <p class="font-display font-bold text-xl mt-1">24</p>
+        <p class="text-text-3 text-[11px] uppercase tracking-wide font-medium mt-0.5">Chats</p>
+      </div>
+      <div class="bg-surface rounded-3xl shadow-card p-4 text-center">
+        <span class="material-symbols-outlined text-primary text-2xl">schedule</span>
+        <p class="font-display font-bold text-xl mt-1">3.2h</p>
+        <p class="text-text-3 text-[11px] uppercase tracking-wide font-medium mt-0.5">Minutes</p>
+      </div>
+    </div>
+
+    <!-- Learning Section -->
+    <section class="bg-surface rounded-5xl shadow-card p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 rounded-2xl bg-primary-soft flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary">school</span>
+        </div>
+        <h2 class="font-display font-bold text-lg">Learning Goal</h2>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <p class="text-text-2 text-xs font-medium uppercase tracking-wider mb-2">Target Language</p>
+          <button class="flex items-center gap-2 bg-surface-2 rounded-2xl px-4 py-2.5 border border-border hover:border-primary/30 transition-colors">
+            <span class="text-xl">🇪🇸</span>
+            <span class="font-medium text-sm">Spanish</span>
+            <span class="material-symbols-outlined text-text-2 text-lg ml-auto">expand_more</span>
+          </button>
+        </div>
+
+        <div>
+          <p class="text-text-2 text-xs font-medium uppercase tracking-wider mb-2">Level</p>
+          <div class="flex flex-wrap gap-2">
+            <button class="px-4 py-2 rounded-full text-xs font-semibold bg-surface-2 text-text-2 border border-border hover:border-primary/30">1</button>
+            <button class="px-4 py-2 rounded-full text-xs font-semibold bg-surface-2 text-text-2 border border-border hover:border-primary/30">2</button>
+            <button class="px-4 py-2 rounded-full text-xs font-semibold bg-primary text-white shadow-button">3</button>
+            <button class="px-4 py-2 rounded-full text-xs font-semibold bg-surface-2 text-text-2 border border-border hover:border-primary/30">4</button>
+            <button class="px-4 py-2 rounded-full text-xs font-semibold bg-surface-2 text-text-2 border border-border hover:border-primary/30">5</button>
+            <button class="px-4 py-2 rounded-full text-xs font-semibold bg-surface-2 text-text-2 border border-border hover:border-primary/30">6</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Audio -->
+    <section class="bg-surface rounded-5xl shadow-card p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 rounded-2xl bg-primary-soft flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary">volume_up</span>
+        </div>
+        <h2 class="font-display font-bold text-lg">Audio & Playback</h2>
+      </div>
+      <div class="space-y-5">
+        <div>
+          <div class="flex justify-between mb-2">
+            <label class="text-sm font-medium">Voice Speed</label>
+            <span class="text-sm font-semibold text-primary">1.0x</span>
+          </div>
+          <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full" />
+          <div class="flex justify-between text-[11px] text-text-2 mt-1">
+            <span>Slow</span><span>Normal</span><span>Fast</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-4 border-t border-border">
+          <div>
+            <p class="text-sm font-medium">Auto-play audio</p>
+            <p class="text-xs text-text-2 mt-0.5">Speak responses automatically</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" checked class="sr-only peer" />
+            <div class="w-11 h-7 bg-text-3 rounded-full peer-checked:bg-primary toggle-track">
+              <div class="absolute top-[3px] left-[3px] w-[22px] h-[22px] bg-white rounded-full shadow toggle-thumb peer-checked:translate-x-4"></div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Partner -->
+    <section class="bg-surface rounded-5xl shadow-card p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 rounded-2xl bg-primary-soft flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary">record_voice_over</span>
+        </div>
+        <h2 class="font-display font-bold text-lg">AI Partner</h2>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col items-center p-4 rounded-3xl bg-primary-soft border-2 border-primary cursor-pointer">
+          <img src="https://i.pravatar.cc/150?img=5" class="w-14 h-14 rounded-full object-cover mb-2 ring-2 ring-white" alt="Elena" />
+          <p class="font-semibold text-sm">Elena</p>
+          <p class="text-xs text-text-2">Spain Accent</p>
+        </div>
+        <div class="flex flex-col items-center p-4 rounded-3xl bg-surface-2 border border-border hover:border-primary/30 cursor-pointer transition-colors">
+          <img src="https://i.pravatar.cc/150?img=9" class="w-14 h-14 rounded-full object-cover mb-2 opacity-70" alt="Marcos" />
+          <p class="font-semibold text-sm text-text-2">Marcos</p>
+          <p class="text-xs text-text-3">Mexico Accent</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Premium -->
+    <section class="bg-surface rounded-5xl shadow-card p-6 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-primary-soft flex items-center justify-center">
+          <span class="material-symbols-outlined text-primary">workspace_premium</span>
+        </div>
+        <div>
+          <h3 class="font-display font-bold text-base">Talkingo Premium</h3>
+          <p class="text-text-2 text-sm mt-0.5">Unlimited conversations</p>
+        </div>
+      </div>
+      <button class="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold shadow-button hover:brightness-105 transition-all shrink-0">
+        Upgrade
+      </button>
+    </section>
+
+    <!-- Sign Out -->
+    <button class="w-full py-3.5 rounded-3xl bg-surface shadow-card text-text-2 text-sm font-medium hover:text-red-500 transition-colors">
+      Sign Out
+    </button>
+
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-surface rounded-full shadow-float px-2 py-2">
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined text-xl">chat_bubble</span>
+    </a>
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined text-xl">auto_stories</span>
+    </a>
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full bg-primary text-white shadow-button scale-110">
+      <span class="material-symbols-outlined text-xl">person</span>
+    </a>
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined text-xl">history</span>
+    </a>
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined text-xl">settings</span>
+    </a>
+  </nav>
+
+</body>
+</html>

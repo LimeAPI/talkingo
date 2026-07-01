@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talkingo — Cyber Terminal</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#050A0F',
+            surface: '#0A1218',
+            'surface-2': '#0E1A22',
+            'surface-3': '#132430',
+            primary: '#00F0FF',
+            'primary-dim': 'rgba(0,240,255,0.08)',
+            secondary: '#FF2A6D',
+            'secondary-dim': 'rgba(255,42,109,0.08)',
+            success: '#05FFA1',
+            text: '#D0E4F0',
+            'text-2': '#5A7A8A',
+            'text-3': '#2A4050',
+            grid: 'rgba(0,240,255,0.04)',
+            border: 'rgba(0,240,255,0.12)',
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'monospace'],
+            display: ['Space Grotesk', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: #050A0F;
+      background-image:
+        linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .scanline {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px, rgba(0,240,255,0.015) 2px, rgba(0,240,255,0.015) 4px
+      );
+      pointer-events: none; z-index: 999;
+    }
+    .glow-cyan { box-shadow: 0 0 20px rgba(0,240,255,0.15), inset 0 0 20px rgba(0,240,255,0.03); }
+    .glow-pink { box-shadow: 0 0 20px rgba(255,42,109,0.15), inset 0 0 20px rgba(255,42,109,0.03); }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .display { font-family: 'Space Grotesk', sans-serif; }
+    .hex-clip { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px; background: #00F0FF;
+      box-shadow: 0 0 10px #00F0FF; cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%; height: 2px; background: rgba(0,240,255,0.2);
+    }
+  </style>
+</head>
+<body class="text-text antialiased min-h-[100dvh] pb-28">
+<div class="scanline"></div>
+
+  <header class="sticky top-0 z-40 border-b border-border bg-bg/90 backdrop-blur-sm">
+    <div class="max-w-lg mx-auto flex items-center justify-between px-5 py-3">
+      <div class="flex items-center gap-3">
+        <div class="hex-clip w-8 h-8 bg-primary flex items-center justify-center">
+          <span class="text-bg text-xs font-bold">T</span>
+        </div>
+        <div>
+          <span class="display font-bold text-sm tracking-wider">TALKINGO</span>
+          <span class="mono text-[10px] text-text-2 block">v2.4.1 // ONLINE</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+        <span class="mono text-[10px] text-success">LIVE</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-lg mx-auto px-5 pt-8 space-y-1">
+
+    <!-- Identity Module -->
+    <section class="relative border border-border bg-surface p-5 glow-cyan">
+      <div class="absolute -top-px left-4 w-20 h-px bg-primary"></div>
+      <div class="flex items-start gap-4">
+        <div class="relative">
+          <div class="hex-clip w-16 h-16 bg-surface-3 flex items-center justify-center border border-border">
+            <img src="https://i.pravatar.cc/150?img=12" class="hex-clip w-14 h-14 object-cover" alt="Alex" />
+          </div>
+          <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-success hex-clip flex items-center justify-center">
+            <span class="text-[6px] font-bold text-bg">ON</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <h1 class="display font-bold text-xl tracking-tight">ALEX_KOVACS</h1>
+            <span class="mono text-[10px] px-1.5 py-0.5 border border-primary text-primary">PRO</span>
+          </div>
+          <p class="mono text-xs text-text-2 mt-1">alex.learner@node.net</p>
+          <div class="flex gap-3 mt-3">
+            <div>
+              <p class="mono text-[10px] text-text-3 uppercase">Streak</p>
+              <p class="display font-bold text-lg text-primary">07</p>
+            </div>
+            <div>
+              <p class="mono text-[10px] text-text-3 uppercase">Sessions</p>
+              <p class="display font-bold text-lg text-primary">24</p>
+            </div>
+            <div>
+              <p class="mono text-[10px] text-text-3 uppercase">Minutes</p>
+              <p class="display font-bold text-lg text-primary">192</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Neural Pathway Divider -->
+    <div class="py-3 flex items-center gap-3">
+      <div class="h-px flex-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+      <span class="mono text-[10px] text-text-2 tracking-widest">NEURAL_CONFIG</span>
+      <div class="h-px flex-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+    </div>
+
+    <!-- Language Config -->
+    <section class="border border-border bg-surface p-5 glow-cyan">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="mono text-[10px] text-primary">[LANG]</span>
+        <span class="mono text-[10px] text-text-2">TARGET_PROTOCOL</span>
+      </div>
+      <div class="flex items-center gap-4 mb-5">
+        <span class="text-3xl">🇪🇸</span>
+        <div>
+          <p class="display font-bold text-lg">SPANISH_ES</p>
+          <p class="mono text-xs text-text-2">Castilian Neural Model</p>
+        </div>
+        <button class="ml-auto mono text-[10px] px-3 py-1.5 border border-border hover:border-primary text-primary transition-colors">SWITCH</button>
+      </div>
+      <div class="space-y-2">
+        <div class="flex justify-between text-xs">
+          <span class="mono text-text-2">LEVEL</span>
+          <span class="mono text-primary font-bold">5 // INTERMEDIATE</span>
+        </div>
+        <div class="h-1.5 bg-surface-3 relative overflow-hidden">
+          <div class="absolute inset-y-0 left-0 w-[50%] bg-gradient-to-r from-primary to-secondary"></div>
+        </div>
+        <div class="flex justify-between mono text-[10px] text-text-3">
+          <span>A1</span><span>A2</span><span class="text-primary">B1</span><span>B2</span><span>C1</span><span>C2</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Audio Systems -->
+    <section class="border border-border bg-surface p-5 glow-pink">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="mono text-[10px] text-secondary">[AUD]</span>
+        <span class="mono text-[10px] text-text-2">AUDIO_SUBSYSTEMS</span>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <div class="flex justify-between mb-2">
+            <span class="mono text-xs text-text-2">VOICE_SPEED</span>
+            <span class="mono text-xs text-secondary">1.0x</span>
+          </div>
+          <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full" />
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-border">
+          <div>
+            <p class="mono text-xs text-text">AUTO_PLAY</p>
+            <p class="mono text-[10px] text-text-2">Speech synthesis auto-trigger</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" checked class="sr-only peer" />
+            <div class="w-10 h-5 bg-surface-3 border border-border peer-checked:bg-secondary peer-checked:border-secondary transition-colors">
+              <div class="absolute top-[2px] left-[2px] w-4 h-4 bg-text peer-checked:bg-bg transition-all peer-checked:translate-x-5"></div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Partner -->
+    <section class="border border-border bg-surface p-5 glow-cyan">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="mono text-[10px] text-primary">[AI]</span>
+        <span class="mono text-[10px] text-text-2">PARTNER_MODULE</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="border border-primary bg-primary-dim p-4 relative">
+          <div class="absolute top-0 right-0 w-0 h-0 border-l-[20px] border-l-transparent border-t-[20px] border-t-primary"></div>
+          <div class="hex-clip w-12 h-12 bg-surface-3 mx-auto mb-2 flex items-center justify-center">
+            <img src="https://i.pravatar.cc/150?img=5" class="hex-clip w-10 h-10 object-cover" alt="Elena" />
+          </div>
+          <p class="display font-bold text-sm text-center">ELENA_V2</p>
+          <p class="mono text-[10px] text-primary text-center">SPAIN // ACTIVE</p>
+        </div>
+        <div class="border border-border bg-surface-2 p-4 opacity-50">
+          <div class="hex-clip w-12 h-12 bg-surface-3 mx-auto mb-2 flex items-center justify-center">
+            <img src="https://i.pravatar.cc/150?img=9" class="hex-clip w-10 h-10 object-cover opacity-50" alt="Marcos" />
+          </div>
+          <p class="display font-bold text-sm text-center text-text-2">MARCOS_V1</p>
+          <p class="mono text-[10px] text-text-3 text-center">MEXICO // LOCKED</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- System Status -->
+    <section class="border border-border bg-surface p-5 mb-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="mono text-[10px] text-text-2 mb-1">SYSTEM_STATUS</p>
+          <p class="display font-bold text-lg">PREMIUM_ACTIVE</p>
+          <p class="mono text-xs text-text-2 mt-1">Unlimited neural sessions</p>
+        </div>
+        <button class="mono text-[10px] px-4 py-2 border border-secondary text-secondary hover:bg-secondary hover:text-bg transition-colors">
+          MANAGE
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Terminal Nav -->
+  <nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg/95 backdrop-blur-sm">
+    <div class="max-w-lg mx-auto flex items-center justify-around px-2 py-2">
+      <a href="#" class="flex flex-col items-center gap-1 py-2 px-3 text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-lg">chat_bubble</span>
+        <span class="mono text-[8px] tracking-wider">COMMS</span>
+      </a>
+      <a href="#" class="flex flex-col items-center gap-1 py-2 px-3 text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-lg">auto_stories</span>
+        <span class="mono text-[8px] tracking-wider">DATA</span>
+      </a>
+      <a href="#" class="flex flex-col items-center gap-1 py-2 px-3 text-primary border-t-2 border-primary -mt-0.5">
+        <span class="material-symbols-outlined text-lg">person</span>
+        <span class="mono text-[8px] tracking-wider">USER</span>
+      </a>
+      <a href="#" class="flex flex-col items-center gap-1 py-2 px-3 text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-lg">history</span>
+        <span class="mono text-[8px] tracking-wider">LOGS</span>
+      </a>
+      <a href="#" class="flex flex-col items-center gap-1 py-2 px-3 text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-lg">settings</span>
+        <span class="mono text-[8px] tracking-wider">SYS</span>
+      </a>
+    </div>
+  </nav>
+
+</body>
+</html>

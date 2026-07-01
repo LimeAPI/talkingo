@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Talkingo.ai | Real Talk. Real Fluency.</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#00210f",
+                        "primary-container": "#8a05ff",
+                        "inverse-primary": "#8300f3",
+                        "surface-dim": "#131313",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#eddbff",
+                        "canvas-base": "#0A0A0A",
+                        "surface": "#131313",
+                        "on-secondary-fixed-variant": "#00522d",
+                        "surface-container": "#201f1f",
+                        "secondary-fixed-dim": "#31e28a",
+                        "on-tertiary-container": "#eadcff",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#d3bbff",
+                        "on-tertiary-fixed-variant": "#503b78",
+                        "primary": "#d9b9ff",
+                        "border-subtle": "rgba(240, 240, 240, 0.08)",
+                        "surface-card": "#1C1C1C",
+                        "on-tertiary-fixed": "#240c4a",
+                        "surface-variant": "#353534",
+                        "on-surface-variant": "#cfc2d9",
+                        "tertiary-fixed": "#ebddff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "outline": "#988ca2",
+                        "surface-container-high": "#2a2a2a",
+                        "primary-fixed-dim": "#d9b9ff",
+                        "tertiary": "#d3bbff",
+                        "background": "#131313",
+                        "on-primary-fixed": "#290054",
+                        "text-secondary": "#A1A1A1",
+                        "surface-container-low": "#1c1b1b",
+                        "secondary": "#43ed94",
+                        "on-surface": "#e5e2e1",
+                        "surface-container-highest": "#353534",
+                        "on-primary": "#450086",
+                        "on-tertiary": "#392460",
+                        "text-primary": "#F0F0F0",
+                        "secondary-container": "#01d07b",
+                        "inverse-on-surface": "#313030",
+                        "on-error": "#690005",
+                        "on-primary-fixed-variant": "#6300bb",
+                        "on-secondary-container": "#00532d",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#eedcff",
+                        "inverse-surface": "#e5e2e1",
+                        "tertiary-container": "#6f5998",
+                        "surface-tint": "#d9b9ff",
+                        "outline-variant": "#4c4356",
+                        "on-background": "#e5e2e1",
+                        "surface-bright": "#393939",
+                        "on-secondary": "#00391e",
+                        "secondary-fixed": "#59ffa4"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "gutter": "24px",
+                        "section-gap": "120px",
+                        "margin-desktop": "64px",
+                        "base": "8px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "label-mono": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-xl": ["Inter"],
+                        "body-md": ["Inter"],
+                        "caption": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-lg-mobile": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "display-xl": ["72px", {"lineHeight": "80px", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "caption": ["12px", {"lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-md": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            background: rgba(28, 28, 28, 0.6);
+            border: 1px solid rgba(240, 240, 240, 0.08);
+        }
+        .hero-gradient {
+            background: radial-gradient(circle at 50% 50%, rgba(138, 5, 255, 0.1) 0%, rgba(10, 10, 10, 0) 70%);
+        }
+        .scrim-bottom {
+            background: linear-gradient(to top, rgba(10, 10, 10, 1), rgba(10, 10, 10, 0));
+        }
+        .inner-glow {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* ── Premium Enhancements ────────────────────────────── */
+
+        /* Ambient orbs */
+        .ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.35;
+            pointer-events: none;
+            animation: orb-drift 26s ease-in-out infinite;
+            will-change: transform;
+        }
+        .ambient-orb-1 {
+            width: 520px; height: 520px;
+            background: radial-gradient(circle, rgba(138, 5, 255, 0.2) 0%, transparent 70%);
+            top: -18%; left: -12%;
+        }
+        .ambient-orb-2 {
+            width: 460px; height: 460px;
+            background: radial-gradient(circle, rgba(1, 208, 123, 0.18) 0%, transparent 70%);
+            bottom: -18%; right: -12%;
+            animation-delay: -10s;
+        }
+        .ambient-orb-3 {
+            width: 320px; height: 320px;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.12) 0%, transparent 70%);
+            top: 38%; left: 50%;
+            transform: translateX(-50%);
+            animation-delay: -6s;
+        }
+
+        @keyframes orb-drift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25%       { transform: translate(50px, -45px) scale(1.1); }
+            50%       { transform: translate(-35px, 40px) scale(0.9); }
+            75%       { transform: translate(35px, 50px) scale(1.06); }
+        }
+
+        /* Gradient text */
+        .text-gradient-accent {
+            background: linear-gradient(135deg, #8a05ff 0%, #01d07b 50%, #00e5ff 100%);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            animation: gradient-shift 8s ease-in-out infinite;
+        }
+
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50%      { background-position: 100% 50%; }
+        }
+
+        /* Scroll reveal animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .reveal-delay-1 { transition-delay: 0.08s; }
+        .reveal-delay-2 { transition-delay: 0.16s; }
+        .reveal-delay-3 { transition-delay: 0.24s; }
+        .reveal-delay-4 { transition-delay: 0.32s; }
+        .reveal-delay-5 { transition-delay: 0.40s; }
+
+        /* Premium glass card */
+        .glass-card-premium {
+            backdrop-filter: blur(24px);
+            background: rgba(28, 28, 28, 0.5);
+            border: 1px solid rgba(240, 240, 240, 0.08);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .glass-card-premium:hover {
+            transform: translateY(-4px);
+            border-color: rgba(138, 5, 255, 0.35);
+            box-shadow: 0 12px 40px -8px rgba(138, 5, 255, 0.2), 0 0 0 1px rgba(138, 5, 255, 0.1);
+        }
+
+        /* Card hover lift */
+        .card-hover-lift {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .card-hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px -8px rgba(138, 5, 255, 0.15);
+        }
+
+        /* Mode card */
+        .mode-card {
+            backdrop-filter: blur(20px);
+            background: rgba(28, 28, 28, 0.4);
+            border: 1px solid rgba(240, 240, 240, 0.06);
+            border-radius: 24px;
+            padding: 1.75rem;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .mode-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(138, 5, 255, 0.3);
+            box-shadow: 0 8px 32px -6px rgba(138, 5, 255, 0.18);
+        }
+        .mode-card:hover .mode-icon {
+            background: rgba(138, 5, 255, 0.15);
+            border-color: rgba(138, 5, 255, 0.3);
+        }
+
+        /* Level dot */
+        .level-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: rgba(138, 5, 255, 0.25);
+            border: 2px solid rgba(138, 5, 255, 0.4);
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .level-dot.active {
+            background: #8a05ff;
+            box-shadow: 0 0 16px rgba(138, 5, 255, 0.5);
+        }
+
+        /* Scenario pill */
+        .scenario-pill {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.8125rem;
+            border: 1px solid rgba(240, 240, 240, 0.08);
+            background: rgba(28, 28, 28, 0.4);
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .scenario-pill:hover {
+            border-color: rgba(1, 208, 123, 0.35);
+            background: rgba(1, 208, 123, 0.08);
+            transform: translateY(-2px);
+        }
+
+        /* Language card */
+        .lang-card-premium {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 1rem 0.75rem;
+            border-radius: 16px;
+            border: 1px solid rgba(240, 240, 240, 0.06);
+            background: rgba(28, 28, 28, 0.35);
+            backdrop-filter: blur(8px);
+            transition: all 0.25s ease;
+        }
+        .lang-card-premium:hover {
+            border-color: rgba(0, 229, 255, 0.3);
+            background: rgba(0, 229, 255, 0.06);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px -6px rgba(0, 229, 255, 0.12);
+        }
+
+        /* Pricing card */
+        .pricing-card {
+            backdrop-filter: blur(24px);
+            background: rgba(28, 28, 28, 0.45);
+            border: 1px solid rgba(240, 240, 240, 0.06);
+            border-radius: 28px;
+            padding: 2rem;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .pricing-card:hover {
+            transform: translateY(-4px);
+        }
+        .pricing-card.popular {
+            border-color: rgba(138, 5, 255, 0.3);
+            box-shadow: 0 0 40px -6px rgba(138, 5, 255, 0.25), 0 0 16px -4px rgba(138, 5, 255, 0.15);
+            background: linear-gradient(135deg, rgba(138, 5, 255, 0.06), rgba(28, 28, 28, 0.45));
+        }
+        .pricing-card.popular:hover {
+            box-shadow: 0 0 56px -8px rgba(138, 5, 255, 0.35), 0 0 24px -4px rgba(138, 5, 255, 0.2);
+        }
+
+        /* Popular badge shimmer */
+        .shimmer-badge {
+            position: relative;
+            overflow: hidden;
+        }
+        .shimmer-badge::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+            transform: translateX(-100%);
+            animation: shimmer-slide 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            pointer-events: none;
+        }
+        @keyframes shimmer-slide {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Conversation bubbles */
+        .bubble-user {
+            background: linear-gradient(135deg, rgba(138, 5, 255, 0.15), rgba(138, 5, 255, 0.05));
+            border: 1px solid rgba(138, 5, 255, 0.2);
+            border-radius: 20px 20px 20px 4px;
+        }
+        .bubble-ai {
+            background: linear-gradient(135deg, rgba(1, 208, 123, 0.12), rgba(1, 208, 123, 0.04));
+            border: 1px solid rgba(1, 208, 123, 0.15);
+            border-radius: 20px 20px 4px 20px;
+        }
+
+        /* Tutor card */
+        .tutor-card {
+            backdrop-filter: blur(20px);
+            background: rgba(28, 28, 28, 0.4);
+            border: 1px solid rgba(240, 240, 240, 0.06);
+            border-radius: 24px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .tutor-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(138, 5, 255, 0.3);
+            box-shadow: 0 12px 40px -8px rgba(138, 5, 255, 0.15);
+        }
+
+        /* Testimonial card */
+        .testimonial-card {
+            backdrop-filter: blur(20px);
+            background: rgba(28, 28, 28, 0.4);
+            border: 1px solid rgba(240, 240, 240, 0.06);
+            border-radius: 24px;
+            padding: 1.75rem;
+            transition: all 0.3s ease;
+        }
+        .testimonial-card:hover {
+            border-color: rgba(138, 5, 255, 0.2);
+            box-shadow: 0 8px 32px -6px rgba(138, 5, 255, 0.1);
+        }
+
+        /* FAQ accordion */
+        .faq-answer {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .faq-answer.open {
+            grid-template-rows: 1fr;
+        }
+        .faq-answer > div {
+            overflow: hidden;
+        }
+
+        /* Inner glow button */
+        .btn-primary-glow {
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 16px rgba(138,5,255,0.25);
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .btn-primary-glow:hover {
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 32px rgba(138,5,255,0.4);
+            transform: scale(1.03);
+        }
+        .btn-primary-glow:active {
+            transform: scale(0.97);
+        }
+
+        /* Hide ambient orbs on touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            .ambient-orb { display: none; }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.15s !important;
+            }
+            .ambient-orb, .reveal { animation: none !important; opacity: 1 !important; transform: none !important; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-canvas-base text-text-primary selection:bg-primary-container selection:text-white antialiased">
+<!-- Navigation -->
+<header class="fixed top-0 w-full z-50 bg-background/60 dark:bg-background/60 backdrop-blur-xl border-b border-border-subtle shadow-sm">
+<nav class="flex justify-between items-center h-20 px-gutter max-w-container-max mx-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="language">language</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tighter text-on-surface">Talkingo.ai</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-primary dark:text-primary font-medium hover:text-primary transition-colors duration-300" href="#">Product</a>
+<a class="text-text-secondary dark:text-text-secondary hover:text-primary transition-colors duration-300" href="#">Features</a>
+<a class="text-text-secondary dark:text-text-secondary hover:text-primary transition-colors duration-300" href="#">Tutors</a>
+<a class="text-text-secondary dark:text-text-secondary hover:text-primary transition-colors duration-300" href="#">Pricing</a>
+</div>
+<button class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full font-body-md inner-glow hover:scale-105 active:scale-95 transition-all duration-200">
+                Get Started
+            </button>
+</nav>
+</header>
+<main class="relative pt-20 overflow-hidden">
+<!-- Hero Section -->
+<section class="relative min-h-screen flex items-center overflow-hidden px-gutter pt-section-gap pb-24">
+  <!-- Ambient orbs -->
+  <div class="ambient-orb ambient-orb-1"></div>
+  <div class="ambient-orb ambient-orb-2"></div>
+  <div class="ambient-orb ambient-orb-3"></div>
+
+  <div class="relative z-10 mx-auto grid max-w-container-max gap-12 w-full lg:grid-cols-[1.05fr_0.95fr] items-center">
+    <!-- Left column -->
+    <div class="flex flex-col justify-center space-y-8">
+      <div class="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 px-3.5 py-1.5 text-sm text-primary">
+        <span class="material-symbols-outlined text-[16px]" data-icon="auto_awesome" style="font-variation-settings:'FILL' 1;">auto_awesome</span>
+        Don&rsquo;t study the language. <span class="font-semibold text-white">Live it.</span>
+      </div>
+
+      <div class="space-y-5">
+        <h1 class="font-display-xl text-display-xl md:text-7xl lg:text-8xl text-on-surface leading-[1.05] tracking-tighter">
+          Speak <span class="text-gradient-accent">real conversations</span>.<br />
+          <span class="text-text-secondary/60">Not textbook drills.</span>
+        </h1>
+        <p class="font-body-lg text-body-lg text-text-secondary max-w-xl leading-relaxed">
+          Real-time AI conversations that adapt to your level, pace, and goals.
+          Practice 23 languages with tutors who feel human.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap gap-4">
+        <button class="bg-primary-container text-white px-8 py-4 rounded-full font-body-lg font-bold btn-primary-glow flex items-center gap-2">
+          Start speaking free <span class="material-symbols-outlined text-[20px]" data-icon="arrow_forward">arrow_forward</span>
+        </button>
+        <button class="bg-transparent border border-border-subtle text-on-surface px-8 py-4 rounded-full font-body-lg font-semibold hover:bg-surface-variant hover:border-primary/30 transition-all duration-300">
+          See how it works
+        </button>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="flex flex-wrap gap-6 text-sm">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl font-bold tracking-tight text-primary">23</span>
+          <span class="text-text-secondary/50">Languages</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl font-bold tracking-tight text-secondary">300+</span>
+          <span class="text-text-secondary/50">Scenarios</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl font-bold tracking-tight text-[#00E5FF]">12</span>
+          <span class="text-text-secondary/50">Levels</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-2xl font-bold tracking-tight text-[#B388FF]">6</span>
+          <span class="text-text-secondary/50">Tutors</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column - conversation demo -->
+    <div class="relative flex items-center">
+      <div class="w-full rounded-[32px] border border-border-subtle bg-surface-card/30 p-4 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+        <div class="rounded-[28px] border border-border-subtle bg-surface-container-lowest/80 p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary border border-primary/20">AI</div>
+              <div>
+                <p class="text-sm font-medium text-on-surface">Eli &middot; Spanish</p>
+                <p class="text-xs text-text-secondary/50">Friendly guide &bull; A1 level</p>
+              </div>
+            </div>
+            <span class="flex items-center gap-1.5 rounded-full bg-secondary/10 px-3 py-1 text-xs text-secondary border border-secondary/15">
+              <span class="h-1.5 w-1.5 rounded-full bg-secondary animate-pulse"></span>
+              Live
+            </span>
+          </div>
+
+          <div class="space-y-3 rounded-2xl bg-black/30 p-4 border border-border-subtle">
+            <!-- User bubble -->
+            <div class="bubble-user p-3 text-sm text-on-surface/90 max-w-[85%] reveal visible" style="opacity:1;transform:none">
+              Let&rsquo;s practice ordering coffee in Spanish.
+            </div>
+            <!-- AI bubble -->
+            <div class="bubble-ai p-3 text-sm text-on-surface/90 ml-auto max-w-[85%] reveal visible" style="opacity:1;transform:none">
+              Claro, &iquest;qu&eacute; te gustar&iacute;a pedir?
+            </div>
+            <!-- User bubble -->
+            <div class="bubble-user p-3 text-sm text-on-surface/90 max-w-[85%] reveal visible" style="opacity:1;transform:none">
+              I&rsquo;d like a latte, please.
+            </div>
+            <!-- AI bubble with correction tip -->
+            <div class="bubble-ai p-3 text-sm text-on-surface/90 ml-auto max-w-[85%] reveal visible" style="opacity:1;transform:none">
+              <span class="text-secondary font-medium">Perfecto.</span> Un caf&eacute; latte &mdash; excelente elecci&oacute;n.
+              <span class="block mt-1 text-[11px] text-text-secondary/40">Tip: In Spain, ask for &ldquo;un caf&eacute; con leche&rdquo;</span>
+            </div>
+          </div>
+
+          <!-- Input bar mock -->
+          <div class="mt-4 flex items-center gap-2 rounded-2xl border border-border-subtle bg-surface-container-low/30 px-4 py-3">
+            <span class="material-symbols-outlined text-primary/60 text-[20px]" data-icon="mic">mic</span>
+            <span class="text-sm text-text-secondary/40">Tap to speak or type your response...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- Trust / Stats Section -->
+<section class="bg-surface-container-lowest border-y border-border-subtle py-12">
+<div class="max-w-container-max mx-auto px-gutter">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+<div class="flex flex-col items-center gap-2 p-4 rounded-2xl glass-card-premium">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="language" style="font-variation-settings:'FILL' 1;">language</span>
+<div class="font-display-xl text-headline-lg text-primary leading-none">23</div>
+<div class="font-label-mono text-label-mono text-text-secondary uppercase tracking-wider text-[11px]">Languages</div>
+</div>
+<div class="flex flex-col items-center gap-2 p-4 rounded-2xl glass-card-premium">
+<span class="material-symbols-outlined text-secondary text-2xl" data-icon="explore" style="font-variation-settings:'FILL' 1;">explore</span>
+<div class="font-display-xl text-headline-lg text-secondary leading-none">300+</div>
+<div class="font-label-mono text-label-mono text-text-secondary uppercase tracking-wider text-[11px]">Scenarios</div>
+</div>
+<div class="flex flex-col items-center gap-2 p-4 rounded-2xl glass-card-premium">
+<span class="material-symbols-outlined text-[#00E5FF] text-2xl" data-icon="trending_up" style="font-variation-settings:'FILL' 1;">trending_up</span>
+<div class="font-display-xl text-headline-lg text-[#00E5FF] leading-none">12</div>
+<div class="font-label-mono text-label-mono text-text-secondary uppercase tracking-wider text-[11px]">Fluency Levels</div>
+</div>
+<div class="flex flex-col items-center gap-2 p-4 rounded-2xl glass-card-premium">
+<span class="material-symbols-outlined text-[#B388FF] text-2xl" data-icon="group" style="font-variation-settings:'FILL' 1;">group</span>
+<div class="font-display-xl text-headline-lg text-[#B388FF] leading-none">6</div>
+<div class="font-label-mono text-label-mono text-text-secondary uppercase tracking-wider text-[11px]">Unique Tutors</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 4 Modes -->
+<section class="py-section-gap px-gutter bg-canvas-base relative">
+<div class="max-w-container-max mx-auto">
+<div class="text-center mb-12 reveal">
+<span class="font-label-mono text-label-mono text-primary uppercase tracking-[0.2em] mb-3 block">Four ways to practice</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Choose your <span class="text-gradient-accent">flow</span></h2>
+<p class="font-body-lg text-body-lg text-text-secondary mt-3 max-w-lg mx-auto">Every mode adapts to your comfort level &mdash; from typing to full immersion.</p>
+</div>
+<div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+<div class="mode-card reveal">
+<div class="mode-icon w-12 h-12 rounded-2xl bg-surface-variant/50 flex items-center justify-center text-primary border border-border-subtle transition-all mb-4">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+</div>
+<h3 class="text-lg font-semibold text-on-surface">Chat</h3>
+<p class="mt-1.5 text-sm text-text-secondary leading-relaxed">Type at your own pace with AI guidance.</p>
+<span class="mt-3 inline-block text-[11px] uppercase tracking-wider text-primary/50">Great for beginners</span>
+</div>
+<div class="mode-card reveal reveal-delay-1">
+<div class="mode-icon w-12 h-12 rounded-2xl bg-surface-variant/50 flex items-center justify-center text-primary border border-border-subtle transition-all mb-4">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</div>
+<h3 class="text-lg font-semibold text-on-surface">Handsfree</h3>
+<p class="mt-1.5 text-sm text-text-secondary leading-relaxed">Speak naturally with real-time voice AI.</p>
+<span class="mt-3 inline-block text-[11px] uppercase tracking-wider text-primary/50">Build speaking confidence</span>
+</div>
+<div class="mode-card reveal reveal-delay-2">
+<div class="mode-icon w-12 h-12 rounded-2xl bg-surface-variant/50 flex items-center justify-center text-primary border border-border-subtle transition-all mb-4">
+<span class="material-symbols-outlined" data-icon="language">language</span>
+</div>
+<h3 class="text-lg font-semibold text-on-surface">Native</h3>
+<p class="mt-1.5 text-sm text-text-secondary leading-relaxed">Full immersion in your target language.</p>
+<span class="mt-3 inline-block text-[11px] uppercase tracking-wider text-primary/50">Think in the language</span>
+</div>
+<div class="mode-card reveal reveal-delay-3">
+<div class="mode-icon w-12 h-12 rounded-2xl bg-surface-variant/50 flex items-center justify-center text-primary border border-border-subtle transition-all mb-4">
+<span class="material-symbols-outlined" data-icon="phone_in_talk">phone_in_talk</span>
+</div>
+<h3 class="text-lg font-semibold text-on-surface">Live Call</h3>
+<p class="mt-1.5 text-sm text-text-secondary leading-relaxed">Simulated voice calls with AI tutors.</p>
+<span class="mt-3 inline-block text-[11px] uppercase tracking-wider text-primary/50">Real-world pressure</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- The Scenario Engine -->
+<section class="py-section-gap px-gutter bg-canvas-base relative overflow-hidden">
+<div class="max-w-container-max mx-auto">
+<div class="grid md:grid-cols-2 gap-20 items-center">
+<div>
+<span class="font-label-mono text-label-mono text-secondary uppercase tracking-[0.2em] mb-4 block">Immersive Contexts</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-6 leading-tight">The Scenario Engine</h2>
+<p class="font-body-lg text-body-lg text-text-secondary mb-8">
+                            Select a scenario and step into a real-world simulation. Order a croissant at a Parisian boulangerie, handle a high-stakes board meeting in Tokyo, or chat about the weather in London.
+                        </p>
+<ul class="space-y-4">
+<li class="flex items-center gap-4 p-4 rounded-xl glass-panel hover:bg-surface-container transition-colors cursor-pointer group">
+<span class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" data-icon="coffee">coffee</span>
+</span>
+<div>
+<div class="font-body-md font-bold text-on-surface">Parisian Cafe</div>
+<div class="font-caption text-caption text-text-secondary">Intermediate • Social</div>
+</div>
+</li>
+<li class="flex items-center gap-4 p-4 rounded-xl border border-border-subtle hover:bg-surface-container transition-colors cursor-pointer">
+<span class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="work">work</span>
+</span>
+<div>
+<div class="font-body-md font-bold text-on-surface">Job Interview</div>
+<div class="font-caption text-caption text-text-secondary">Advanced • Business</div>
+</div>
+</li>
+</ul>
+</div>
+<div class="relative group">
+<div class="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl opacity-20 blur group-hover:opacity-40 transition duration-1000"></div>
+<div class="relative aspect-square rounded-2xl overflow-hidden glass-panel">
+<img alt="Paris street cafe" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="A highly detailed and cinematic shot of a charming Parisian street cafe at dusk. The warm golden light from the cafe's interior spills onto a cobblestone street, illuminating empty bistro tables and chairs. The mood is romantic, sophisticated, and inviting, captured with a shallow depth of field. The visual style is premium and editorial, using a rich dark color palette with soft glowing accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKst7zvBUZUjGtNL3KcvZQIan0aQ_GxFiW4FmMjK_8JrgzyY35VnMlEmu0hhsN6wcY6Gn_WWuhDhMaTs16kliAfCRjKB1Yth2OyfIycYdXAbGH1D55-kBaLwvDvUWvRa3EZua4xKZKdNFoR6YbJnbpwxNZY-qA6kiea1AyYi1KQqnJZRwehv_nRvAikCTu-6NRXRW1ij2V2nPMchigfwdBiYuZZgHTE1wLsfaJHaYmoVm_HLYLsugHWyHJ8Jw-KTlsyfB0cq4lhQ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8">
+<div class="font-headline-md text-headline-md text-white mb-2">Order Coffee in Paris</div>
+<div class="font-label-mono text-label-mono text-primary uppercase">Scenario Active</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Meet Your Tutors -->
+<section class="py-section-gap px-gutter bg-surface-container-lowest">
+<div class="max-w-container-max mx-auto">
+<div class="text-center mb-12 reveal">
+<span class="font-label-mono text-label-mono text-primary uppercase tracking-[0.2em] mb-3 block">Meet your AI tutors</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Six <span class="text-gradient-accent">personalities</span>. One goal.</h2>
+<p class="font-body-lg text-body-lg text-text-secondary mt-3 max-w-lg mx-auto">Each tutor has a unique teaching style. Pick the one that matches your vibe.</p>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Tutor 1: Eli -->
+<div class="tutor-card reveal">
+<div class="h-72 overflow-hidden relative">
+<img alt="Eli the Nurse" class="w-full h-full object-cover transition-transform duration-500" data-alt="A professional portrait of a compassionate and friendly male nurse in a clean, modern medical setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCj3fBRlbMi8n55J0i2orQBpRoaOaD9QYtfcgPTidM0CtRqLVHXkwrjnvEnPcO0jjQg4BPPTgvTCHlocF62kHyeitq9rGPJGLuXrBUy9BSmV58-wHfKyNNeuHRcCd9O6g4m-ODGu_AmEM8WwFM-mBiBOkLNO0wW4RocPmwxLrRY5CYsiwaXB7Z3_-pv-OHI7TXY5NVsYyHqrMviw2dN-s_6t7AedcfJknKFdhmk9GgCYepz8TCKcc5_g6vmdzvI_AlmYcg_thJjTQ"/>
+<div class="absolute bottom-4 left-4 bg-primary px-3 py-1 rounded-full text-black font-label-mono text-[10px] font-bold uppercase">Friendly Guide</div>
+</div>
+<div class="p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Eli</h3>
+<p class="text-xs text-primary/60 font-medium uppercase tracking-wider mb-3">A1-A2 &bull; General</p>
+<p class="font-body-md text-body-md text-text-secondary mb-4">Friendly guide for easy, warm conversations. Perfect for building confidence.</p>
+<div class="flex items-center gap-2 text-primary font-body-md font-medium transition-transform cursor-pointer hover:translate-x-1">
+Speak with Eli <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Tutor 2: Alex -->
+<div class="tutor-card reveal reveal-delay-1">
+<div class="h-72 overflow-hidden relative">
+<img alt="Alex the Barista" class="w-full h-full object-cover transition-transform duration-500" data-alt="A stylish and casual portrait of a young male barista in a trendy coffee shop." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_gKg6YVln70Xd9lBzrI_-Xq13_dOMOGJB-XfyNc2yilrpU0fVE4WxKZ83lfEHGcbwjs9WDJtKNIVVx4m4qayqf2dutn9ra4R7FRB3Y3T1R1H49Ba214yZNBr_uFCgyeUGfxZArWawFKZWDfs7DeoFhlUq3x53L-f8LWOKyX_CrGHOHfMhJaWSHHChRTJM6lzQcOzMbqaD3IEEP9xiSpBxTz5d2PALQXUD2sAmtTcG-lZA_rbwT4gnvGAyqUWGRNAMKJQh8GkUaw"/>
+<div class="absolute bottom-4 left-4 bg-secondary px-3 py-1 rounded-full text-black font-label-mono text-[10px] font-bold uppercase">Social Coach</div>
+</div>
+<div class="p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Alex</h3>
+<p class="text-xs text-secondary/60 font-medium uppercase tracking-wider mb-3">A2-B1 &bull; Social</p>
+<p class="font-body-md text-body-md text-text-secondary mb-4">Coach who pushes your daily speaking confidence. Slang, quick-fire chats, and casual speech.</p>
+<div class="flex items-center gap-2 text-secondary font-body-md font-medium transition-transform cursor-pointer hover:translate-x-1">
+Speak with Alex <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Tutor 3: Dr. Luma -->
+<div class="tutor-card reveal reveal-delay-2">
+<div class="h-72 overflow-hidden relative">
+<img alt="Dr. Luma the Coach" class="w-full h-full object-cover transition-transform duration-500" data-alt="An elegant and authoritative portrait of a female executive coach." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWj6-yYmoY5fDj0DPEs_X8dAdrBYsy0lQTUYgs0bTA6D-NuMD-fEgVaqAlvz4J41hECNwJUShoyHeGCfGNqwQYHb9o_BwMs9GOtuVXowXUsORn8lJABRbZPwB7KAp36Ouff_zcYseJz5EXBVbwF5X34NFzhFamtPcHBEuPba4_ZpQCNE56Gxh6TibBiq5eRi4LAxgxnzd_UBF0YomMkRJ-NEcD3FBWTzsyo1VQriFxy6j1Q6BfVkuUmielHnzP4HYmPtG8QM2L_g"/>
+<div class="absolute bottom-4 left-4 bg-tertiary-fixed text-on-tertiary-fixed px-3 py-1 rounded-full font-label-mono text-[10px] font-bold uppercase">Linguistics Expert</div>
+</div>
+<div class="p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Dr. Luma</h3>
+<p class="text-xs text-tertiary/60 font-medium uppercase tracking-wider mb-3">B1-C1 &bull; Academic</p>
+<p class="font-body-md text-body-md text-text-secondary mb-4">Linguist who breaks down every nuance. Sharpen your professional vocabulary.</p>
+<div class="flex items-center gap-2 text-tertiary font-body-md font-medium transition-transform cursor-pointer hover:translate-x-1">
+Speak with Luma <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Tutor 4: Sofia -->
+<div class="tutor-card reveal reveal-delay-3">
+<div class="h-72 overflow-hidden relative bg-gradient-to-br from-[#FF4081]/30 to-[#FF4081]/5 flex items-center justify-center">
+<div class="w-24 h-24 rounded-full bg-[#FF4081]/20 border-2 border-[#FF4081]/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-[48px] text-[#FF4081]/60" data-icon="person">person</span>
+</div>
+<div class="absolute bottom-4 left-4 bg-[#FF4081] px-3 py-1 rounded-full text-black font-label-mono text-[10px] font-bold uppercase">Cultural Guide</div>
+</div>
+<div class="p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Sofia</h3>
+<p class="text-xs text-[#FF4081]/60 font-medium uppercase tracking-wider mb-3">All Levels &bull; Cultural</p>
+<p class="font-body-md text-body-md text-text-secondary mb-4">Cultural guide through real-world scenarios. Learn the nuances behind the words.</p>
+<div class="flex items-center gap-2 text-[#FF4081] font-body-md font-medium transition-transform cursor-pointer hover:translate-x-1">
+Speak with Sofia <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Tutor 5: Riko -->
+<div class="tutor-card reveal reveal-delay-4">
+<div class="h-72 overflow-hidden relative bg-gradient-to-br from-[#00E676]/30 to-[#00E676]/5 flex items-center justify-center">
+<div class="w-24 h-24 rounded-full bg-[#00E676]/20 border-2 border-[#00E676]/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-[48px] text-[#00E676]/60" data-icon="school">school</span>
+</div>
+<div class="absolute bottom-4 left-4 bg-[#00E676] px-3 py-1 rounded-full text-black font-label-mono text-[10px] font-bold uppercase">Precision Teacher</div>
+</div>
+<div class="p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Riko</h3>
+<p class="text-xs text-[#00E676]/60 font-medium uppercase tracking-wider mb-3">B2-C2 &bull; Advanced</p>
+<p class="font-body-md text-body-md text-text-secondary mb-4">Precision teacher for advanced fluency. Perfect your grammar and pronunciation.</p>
+<div class="flex items-center gap-2 text-[#00E676] font-body-md font-medium transition-transform cursor-pointer hover:translate-x-1">
+Speak with Riko <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Tutor 6: Marco -->
+<div class="tutor-card reveal reveal-delay-5">
+<div class="h-72 overflow-hidden relative bg-gradient-to-br from-[#FF9100]/30 to-[#FF9100]/5 flex items-center justify-center">
+<div class="w-24 h-24 rounded-full bg-[#FF9100]/20 border-2 border-[#FF9100]/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-[48px] text-[#FF9100]/60" data-icon="rocket_launch">rocket_launch</span>
+</div>
+<div class="absolute bottom-4 left-4 bg-[#FF9100] px-3 py-1 rounded-full text-black font-label-mono text-[10px] font-bold uppercase">Energetic Partner</div>
+</div>
+<div class="p-6">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Marco</h3>
+<p class="text-xs text-[#FF9100]/60 font-medium uppercase tracking-wider mb-3">A2-B2 &bull; Dynamic</p>
+<p class="font-body-md text-body-md text-text-secondary mb-4">Energetic partner for fast-paced natural talk. Keeps the conversation flowing.</p>
+<div class="flex items-center gap-2 text-[#FF9100] font-body-md font-medium transition-transform cursor-pointer hover:translate-x-1">
+Speak with Marco <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="py-section-gap px-gutter bg-canvas-base relative overflow-hidden">
+<div class="max-w-container-max mx-auto text-center">
+<div class="font-display-xl text-headline-lg md:text-[80px] text-on-surface tracking-tighter leading-none mb-12">
+                    "Don't study the <span class="text-primary italic">language</span>. <br/> <span class="opacity-50">Live it.</span>"
+                </div>
+<div class="w-24 h-1 bg-primary-container mx-auto"></div>
+</div>
+</section>
+<!-- 12 Levels -->
+<section class="py-section-gap px-gutter bg-canvas-base">
+<div class="max-w-container-max mx-auto">
+<div class="text-center mb-12 reveal">
+<span class="font-label-mono text-label-mono text-primary uppercase tracking-[0.2em] mb-3 block">Progression system</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">12 levels from <span class="text-gradient-accent">first words</span> to mastery</h2>
+</div>
+<div class="glass-card-premium rounded-[28px] p-6 md:p-8 shadow-2xl" style="transform:none">
+<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal">
+<div class="level-dot active"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">First Words</p>
+<p class="text-[10px] text-text-secondary/30">Level 1</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-1">
+<div class="level-dot active"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Building Blocks</p>
+<p class="text-[10px] text-text-secondary/30">Level 2</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-2">
+<div class="level-dot active"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Survival Mode</p>
+<p class="text-[10px] text-text-secondary/30">Level 3</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-3">
+<div class="level-dot active"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Daily Explorer</p>
+<p class="text-[10px] text-text-secondary/30">Level 4</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-4">
+<div class="level-dot active"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Conversation Ready</p>
+<p class="text-[10px] text-text-secondary/30">Level 5</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-5">
+<div class="level-dot active"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Confident Talker</p>
+<p class="text-[10px] text-text-secondary/30">Level 6</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal">
+<div class="level-dot"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Confident Speaker</p>
+<p class="text-[10px] text-text-secondary/30">Level 7</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-1">
+<div class="level-dot"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Advanced Talker</p>
+<p class="text-[10px] text-text-secondary/30">Level 8</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-2">
+<div class="level-dot"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Almost Native</p>
+<p class="text-[10px] text-text-secondary/30">Level 9</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-3">
+<div class="level-dot"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Expert Speaker</p>
+<p class="text-[10px] text-text-secondary/30">Level 10</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-4">
+<div class="level-dot"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Precision Speaker</p>
+<p class="text-[10px] text-text-secondary/30">Level 11</p>
+</div>
+</div>
+<div class="flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface-card/20 px-4 py-3 reveal reveal-delay-5">
+<div class="level-dot"></div>
+<div class="min-w-0">
+<p class="text-sm text-on-surface/80 font-medium truncate">Mastery</p>
+<p class="text-[10px] text-text-secondary/30">Level 12</p>
+</div>
+</div>
+</div>
+<p class="mt-6 text-center text-sm text-text-secondary/40">Halfway mark at Level 6 &mdash; &ldquo;Confident Talker&rdquo;</p>
+</div>
+</div>
+</section>
+
+<!-- 23 Languages -->
+<section class="py-section-gap px-gutter bg-surface-container-lowest border-t border-border-subtle">
+<div class="max-w-container-max mx-auto">
+<div class="text-center mb-12 reveal">
+<span class="font-label-mono text-label-mono text-primary uppercase tracking-[0.2em] mb-3 block">Pick your language</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface"><span class="text-gradient-accent">23</span> languages. Real conversations.</h2>
+</div>
+<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+<div class="lang-card-premium reveal">
+<span class="text-base font-medium text-on-surface/80">Espa&ntilde;ol</span>
+<span class="text-[10px] text-text-secondary/30">Spanish</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-1">
+<span class="text-base font-medium text-on-surface/80">日本語</span>
+<span class="text-[10px] text-text-secondary/30">Japanese</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-2">
+<span class="text-base font-medium text-on-surface/80">中文</span>
+<span class="text-[10px] text-text-secondary/30">Mandarin</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-3">
+<span class="text-base font-medium text-on-surface/80">Fran&ccedil;ais</span>
+<span class="text-[10px] text-text-secondary/30">French</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-4">
+<span class="text-base font-medium text-on-surface/80">Deutsch</span>
+<span class="text-[10px] text-text-secondary/30">German</span>
+</div>
+<div class="lang-card-premium reveal">
+<span class="text-base font-medium text-on-surface/80">Italiano</span>
+<span class="text-[10px] text-text-secondary/30">Italian</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-1">
+<span class="text-base font-medium text-on-surface/80">Portugu&ecirc;s</span>
+<span class="text-[10px] text-text-secondary/30">Portuguese</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-2">
+<span class="text-base font-medium text-on-surface/80">Русский</span>
+<span class="text-[10px] text-text-secondary/30">Russian</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-3">
+<span class="text-base font-medium text-on-surface/80">العربية</span>
+<span class="text-[10px] text-text-secondary/30">Arabic</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-4">
+<span class="text-base font-medium text-on-surface/80">한국어</span>
+<span class="text-[10px] text-text-secondary/30">Korean</span>
+</div>
+<div class="lang-card-premium reveal">
+<span class="text-base font-medium text-on-surface/80">हिन्दी</span>
+<span class="text-[10px] text-text-secondary/30">Hindi</span>
+</div>
+<div class="lang-card-premium reveal reveal-delay-1">
+<span class="text-base font-medium text-on-surface/80">T&uuml;rk&ccedil;e</span>
+<span class="text-[10px] text-text-secondary/30">Turkish</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- 300+ Scenarios -->
+<section class="py-section-gap px-gutter bg-canvas-base">
+<div class="max-w-container-max mx-auto">
+<div class="text-center mb-12 reveal">
+<span class="font-label-mono text-label-mono text-primary uppercase tracking-[0.2em] mb-3 block">Real-life situations</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface"><span class="text-gradient-accent">300+</span> scenarios from real life</h2>
+<p class="font-body-lg text-body-lg text-text-secondary mt-3 max-w-lg mx-auto">From ordering coffee to job interviews &mdash; practice what matters to you.</p>
+</div>
+<div class="glass-card-premium rounded-[28px] p-6 md:p-8 shadow-2xl" style="transform:none">
+<div class="flex flex-wrap gap-2.5 justify-center">
+<span class="scenario-pill reveal">Order Coffee</span>
+<span class="scenario-pill reveal reveal-delay-1">Meet Someone New</span>
+<span class="scenario-pill reveal reveal-delay-2">Ask for Directions</span>
+<span class="scenario-pill reveal reveal-delay-3">Go Shopping</span>
+<span class="scenario-pill reveal reveal-delay-4">At a Restaurant</span>
+<span class="scenario-pill reveal">Talk About Hobbies</span>
+<span class="scenario-pill reveal reveal-delay-1">Make a Phone Call</span>
+<span class="scenario-pill reveal reveal-delay-2">Visit the Doctor</span>
+<span class="scenario-pill reveal reveal-delay-3">Book a Hotel</span>
+<span class="scenario-pill reveal reveal-delay-4">Job Interview</span>
+<span class="scenario-pill reveal">At the Airport</span>
+<span class="scenario-pill reveal reveal-delay-1">Daily Routine</span>
+<span class="scenario-pill reveal reveal-delay-2">Talk About Weather</span>
+<span class="scenario-pill reveal reveal-delay-3">Ask for Help</span>
+<span class="scenario-pill reveal reveal-delay-4">Share Opinions</span>
+<span class="scenario-pill reveal">Plan a Trip</span>
+<span class="scenario-pill reveal reveal-delay-1">Order Food Delivery</span>
+<span class="scenario-pill reveal reveal-delay-2">Small Talk</span>
+<span class="scenario-pill reveal reveal-delay-3">At the Bank</span>
+<span class="scenario-pill reveal reveal-delay-4">Emergency Situations</span>
+</div>
+<p class="mt-6 text-center text-sm text-text-secondary/40">And 280+ more across all 12 levels</p>
+</div>
+</div>
+</section>
+
+<!-- Testimonials -->
+<section class="py-section-gap px-gutter bg-surface-container-lowest border-t border-border-subtle">
+<div class="max-w-container-max mx-auto">
+<div class="text-center mb-12 reveal">
+<span class="font-label-mono text-label-mono text-primary uppercase tracking-[0.2em] mb-3 block">Real learners</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">What our <span class="text-gradient-accent">talkers</span> say</h2>
+</div>
+<div class="grid gap-6 md:grid-cols-3">
+<div class="testimonial-card reveal">
+<div class="mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+</div>
+<p class="text-text-secondary/80 leading-relaxed">&ldquo;I finally look forward to speaking practice. The AI tutors feel like real conversation partners &mdash; not robots.&rdquo;</p>
+<div class="mt-5 pt-4 border-t border-border-subtle flex items-center gap-3">
+<div class="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">S</div>
+<div>
+<p class="text-sm font-medium text-on-surface">Sofia M.</p>
+<p class="text-xs text-text-secondary/40">Learning Spanish</p>
+</div>
+</div>
+</div>
+<div class="testimonial-card reveal reveal-delay-2">
+<div class="mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+</div>
+<p class="text-text-secondary/80 leading-relaxed">&ldquo;The Native mode pushed me to think in Portuguese instead of translating in my head. Game changer.&rdquo;</p>
+<div class="mt-5 pt-4 border-t border-border-subtle flex items-center gap-3">
+<div class="flex h-9 w-9 items-center justify-center rounded-full bg-secondary/15 text-xs font-bold text-secondary">J</div>
+<div>
+<p class="text-sm font-medium text-on-surface">James K.</p>
+<p class="text-xs text-text-secondary/40">Portuguese, B1</p>
+</div>
+</div>
+</div>
+<div class="testimonial-card reveal reveal-delay-4">
+<div class="mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-amber-400 text-[18px]" data-icon="star" style="font-variation-settings:'FILL' 1;">star</span>
+</div>
+<p class="text-text-secondary/80 leading-relaxed">&ldquo;I tried Duolingo, Babbel, and Pimsleur. Nothing comes close to how natural this feels.&rdquo;</p>
+<div class="mt-5 pt-4 border-t border-border-subtle flex items-center gap-3">
+<div class="flex h-9 w-9 items-center justify-center rounded-full bg-[#FF4081]/15 text-xs font-bold text-[#FF4081]">A</div>
+<div>
+<p class="text-sm font-medium text-on-surface">Aiko T.</p>
+<p class="text-xs text-text-secondary/40">English learner</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Features (Voice/Text Adaptability) -->
+<section class="py-section-gap px-gutter bg-surface-dim border-t border-border-subtle">
+<div class="max-w-container-max mx-auto">
+<div class="grid md:grid-cols-2 gap-gutter items-center">
+<div class="order-2 md:order-1 relative h-[600px] flex items-center justify-center">
+<!-- Bento-ish card display for features -->
+<div class="absolute top-0 left-0 w-64 p-6 glass-panel rounded-2xl transform -rotate-6 z-20">
+<span class="material-symbols-outlined text-primary mb-4" data-icon="mic" style="font-variation-settings: 'FILL' 1;">mic</span>
+<div class="font-body-md font-bold mb-2">Voice First</div>
+<p class="font-caption text-caption text-text-secondary">Low-latency speech recognition that understands accents.</p>
+</div>
+<div class="absolute bottom-10 right-0 w-72 p-6 glass-panel rounded-2xl transform rotate-3 z-20">
+<span class="material-symbols-outlined text-secondary mb-4" data-icon="chat_bubble" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+<div class="font-body-md font-bold mb-2">Context Aware</div>
+<p class="font-caption text-caption text-text-secondary">Our AI remembers your past mistakes and helps you fix them in flow.</p>
+</div>
+<div class="w-80 h-80 rounded-full bg-primary/20 absolute blur-3xl"></div>
+<div class="relative z-10 glass-panel p-8 rounded-[40px] w-full max-w-sm">
+<div class="space-y-6">
+<div class="flex justify-end">
+<div class="bg-primary-container text-white px-4 py-3 rounded-2xl rounded-tr-none max-w-[80%] text-sm">
+                                        ¿Cómo te ha ido hoy en el trabajo?
+                                    </div>
+</div>
+<div class="flex justify-start">
+<div class="bg-surface-container-high text-on-surface px-4 py-3 rounded-2xl rounded-tl-none max-w-[80%] text-sm border border-border-subtle">
+                                        It was great! We finished the...
+                                    </div>
+</div>
+<div class="flex justify-start">
+<div class="bg-primary/10 border border-primary/20 text-primary px-4 py-2 rounded-lg text-xs italic">
+                                        Try: "Fue genial. Terminamos el proyecto."
+                                    </div>
+</div>
+</div>
+</div>
+</div>
+<div class="order-1 md:order-2">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-8">AI that adapts to <span class="text-primary">how you learn.</span></h2>
+<div class="space-y-12">
+<div class="flex gap-6">
+<div class="flex-shrink-0 w-12 h-12 rounded-full border border-primary flex items-center justify-center text-primary font-bold">1</div>
+<div>
+<h4 class="font-body-lg font-bold text-on-surface mb-2">Adaptive Feedback</h4>
+<p class="text-text-secondary">We don't stop the conversation. Talkingo provides subtle, context-aware corrections so you never lose your rhythm.</p>
+</div>
+</div>
+<div class="flex gap-6">
+<div class="flex-shrink-0 w-12 h-12 rounded-full border border-secondary flex items-center justify-center text-secondary font-bold">2</div>
+<div>
+<h4 class="font-body-lg font-bold text-on-surface mb-2">Omnichannel Flow</h4>
+<p class="text-text-secondary">Start a voice conversation on your commute and finish it via text at your desk. Your AI tutor stays in sync.</p>
+</div>
+</div>
+<div class="flex gap-6">
+<div class="flex-shrink-0 w-12 h-12 rounded-full border border-tertiary flex items-center justify-center text-tertiary font-bold">3</div>
+<div>
+<h4 class="font-body-lg font-bold text-on-surface mb-2">Spaced Repetition 2.0</h4>
+<p class="text-text-secondary">Real words you used in real scenarios are automatically added to your personalized review queue.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Pricing Section -->
+<section id="pricing" class="py-section-gap px-gutter bg-canvas-base">
+<div class="max-w-container-max mx-auto">
+<div class="text-center mb-12 reveal">
+<span class="font-label-mono text-label-mono text-primary uppercase tracking-[0.2em] mb-3 block">Simple pricing</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Start free. Upgrade when you&rsquo;re <span class="text-gradient-accent">ready</span>.</h2>
+</div>
+<div class="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+<!-- Free -->
+<div class="pricing-card reveal">
+<h3 class="text-xl font-bold text-on-surface">Free</h3>
+<p class="mt-1 text-sm text-text-secondary">Get started and explore.</p>
+<p class="mt-6">
+<span class="text-4xl font-black text-on-surface">$0</span>
+</p>
+<ul class="mt-6 space-y-3">
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Daily warm-up prompts
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Basic AI voice practice
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+1 conversation mode
+</li>
+</ul>
+<button class="mt-8 w-full bg-white/8 text-on-surface/80 hover:bg-white/15 py-4 rounded-2xl font-semibold text-base border border-border-subtle transition-all hover:scale-[1.02] active:scale-95">
+Get started
+</button>
+</div>
+<!-- Pro (Popular) -->
+<div class="pricing-card popular reveal reveal-delay-2">
+<div class="absolute top-0 right-0 shimmer-badge rounded-bl-2xl rounded-tr-[28px] bg-primary/15 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary border-b border-l border-primary/20">
+Most popular
+</div>
+<div class="relative z-10">
+<h3 class="text-xl font-bold text-on-surface">Pro</h3>
+<p class="mt-1 text-sm text-text-secondary">For serious fluency seekers.</p>
+<p class="mt-6">
+<span class="text-4xl font-black text-on-surface">$12</span>
+<span class="text-sm text-text-secondary/40 ml-1">/mo</span>
+</p>
+<ul class="mt-6 space-y-3">
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Unlimited voice sessions
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+All 4 conversation modes
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Advanced corrections &amp; feedback
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Progress analytics &amp; insights
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+All 6 AI tutors
+</li>
+</ul>
+<button class="mt-8 w-full bg-primary-container text-white py-4 rounded-2xl font-bold text-base btn-primary-glow transition-all">
+Start Pro
+</button>
+</div>
+</div>
+<!-- Team -->
+<div class="pricing-card reveal reveal-delay-4">
+<h3 class="text-xl font-bold text-on-surface">Team</h3>
+<p class="mt-1 text-sm text-text-secondary">For groups &amp; families.</p>
+<p class="mt-6">
+<span class="text-4xl font-black text-on-surface">$29</span>
+<span class="text-sm text-text-secondary/40 ml-1">/mo</span>
+</p>
+<ul class="mt-6 space-y-3">
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Everything in Pro
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Up to 5 members
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Shared progress tracking
+</li>
+<li class="flex items-start gap-2.5 text-sm text-text-secondary">
+<span class="material-symbols-outlined text-secondary mt-0.5 text-[18px]" data-icon="check_circle" style="font-variation-settings:'FILL' 1;">check_circle</span>
+Priority support
+</li>
+</ul>
+<button class="mt-8 w-full bg-white/8 text-on-surface/80 hover:bg-white/15 py-4 rounded-2xl font-semibold text-base border border-border-subtle transition-all hover:scale-[1.02] active:scale-95">
+Start Team
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- FAQ + CTA -->
+<section class="py-section-gap px-gutter bg-surface-container-lowest border-t border-border-subtle">
+<div class="max-w-container-max mx-auto grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
+  <!-- FAQ -->
+  <div class="reveal">
+    <span class="font-label-mono text-label-mono text-primary uppercase tracking-[0.2em] mb-3 block">FAQ</span>
+    <h2 class="font-headline-lg text-headline-lg text-on-surface">Questions? <span class="text-gradient-accent">Answers.</span></h2>
+    <div class="mt-8 space-y-3">
+      <!-- FAQ 1 -->
+      <div class="rounded-2xl border border-border-subtle bg-surface-card/30 overflow-hidden transition-all">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-medium text-on-surface/80 hover:text-on-surface transition-colors">
+          Do I need to be fluent in anything to start?
+          <span class="material-symbols-outlined text-text-secondary/40 transition-transform duration-200" data-icon="chevron_right" style="font-size:18px">chevron_right</span>
+        </button>
+        <div class="faq-answer">
+          <div>
+            <p class="px-5 pb-4 text-sm text-text-secondary leading-relaxed">Not at all. Every AI tutor adapts to your current level &mdash; from absolute beginner to near-native. You just show up and speak.</p>
+          </div>
+        </div>
+      </div>
+      <!-- FAQ 2 -->
+      <div class="rounded-2xl border border-border-subtle bg-surface-card/30 overflow-hidden transition-all">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-medium text-on-surface/80 hover:text-on-surface transition-colors">
+          How is this different from Duolingo or Babbel?
+          <span class="material-symbols-outlined text-text-secondary/40 transition-transform duration-200" data-icon="chevron_right" style="font-size:18px">chevron_right</span>
+        </button>
+        <div class="faq-answer">
+          <div>
+            <p class="px-5 pb-4 text-sm text-text-secondary leading-relaxed">Those teach you about a language. Talkingo lets you live it &mdash; real conversations, real corrections, real fluency. No drills, no flashcards.</p>
+          </div>
+        </div>
+      </div>
+      <!-- FAQ 3 -->
+      <div class="rounded-2xl border border-border-subtle bg-surface-card/30 overflow-hidden transition-all">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-medium text-on-surface/80 hover:text-on-surface transition-colors">
+          Can I practice any language?
+          <span class="material-symbols-outlined text-text-secondary/40 transition-transform duration-200" data-icon="chevron_right" style="font-size:18px">chevron_right</span>
+        </button>
+        <div class="faq-answer">
+          <div>
+            <p class="px-5 pb-4 text-sm text-text-secondary leading-relaxed">Yes. We support 23 languages including Spanish, Japanese, Chinese, French, German, Arabic, Korean, and many more.</p>
+          </div>
+        </div>
+      </div>
+      <!-- FAQ 4 -->
+      <div class="rounded-2xl border border-border-subtle bg-surface-card/30 overflow-hidden transition-all">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-medium text-on-surface/80 hover:text-on-surface transition-colors">
+          How does the AI know my level?
+          <span class="material-symbols-outlined text-text-secondary/40 transition-transform duration-200" data-icon="chevron_right" style="font-size:18px">chevron_right</span>
+        </button>
+        <div class="faq-answer">
+          <div>
+            <p class="px-5 pb-4 text-sm text-text-secondary leading-relaxed">We use a 12-level system that tunes vocabulary, speed, and complexity automatically. You can jump between levels anytime.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- CTA Card -->
+  <div class="reveal reveal-delay-2">
+    <div class="relative overflow-hidden rounded-[28px] border border-primary/25 bg-gradient-to-br from-primary/10 via-transparent to-secondary/5 p-8 h-full flex flex-col justify-center" style="backdrop-filter:blur(24px)">
+      <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl"></div>
+      <span class="material-symbols-outlined relative z-10 text-primary/70 text-3xl" data-icon="smart_toy" style="font-variation-settings:'FILL' 1;">smart_toy</span>
+      <h3 class="relative z-10 mt-4 text-2xl font-bold text-on-surface">Ready to have real conversations?</h3>
+      <p class="relative z-10 mt-3 text-sm text-text-secondary leading-relaxed">Join thousands of learners who stopped studying and started speaking. Your first conversation is free.</p>
+      <div class="relative z-10 mt-6">
+        <button class="bg-primary-container text-white font-semibold shadow-xl shadow-primary/30 hover:shadow-primary/50 border-0 px-6 py-4 rounded-2xl btn-primary-glow inline-flex items-center gap-2">
+          Start your first conversation
+          <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-border-subtle relative w-full">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter py-section-gap px-gutter max-w-container-max mx-auto">
+<div class="col-span-1 md:col-span-1">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="language">language</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Talkingo</span>
+</div>
+<p class="font-body-md text-body-md text-text-secondary mb-6 max-w-sm">A voice-first AI language speaking studio. Build real fluency through natural conversation &mdash; not rigid exercises.</p>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-full border border-border-subtle flex items-center justify-center text-text-secondary hover:text-primary hover:border-primary/40 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="public">public</span>
+</a>
+<a class="w-10 h-10 rounded-full border border-border-subtle flex items-center justify-center text-text-secondary hover:text-primary hover:border-primary/40 transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="chat">chat</span>
+</a>
+</div>
+</div>
+<div class="space-y-4">
+<h5 class="text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary/50">Product</h5>
+<ul class="space-y-2.5">
+<li><a class="text-text-secondary font-body-md hover:text-primary transition-colors" href="#">Modes</a></li>
+<li><a class="text-text-secondary font-body-md hover:text-primary transition-colors" href="#">Tutors</a></li>
+<li><a class="text-text-secondary font-body-md hover:text-primary transition-colors" href="#">Levels</a></li>
+<li><a class="text-text-secondary font-body-md hover:text-primary transition-colors" href="#">Pricing</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h5 class="text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary/50">Company</h5>
+<ul class="space-y-2.5">
+<li><a class="text-text-secondary font-body-md hover:text-primary transition-colors" href="#">About</a></li>
+<li><a class="text-text-secondary font-body-md hover:text-primary transition-colors" href="#">Blog</a></li>
+<li><a class="text-text-secondary font-body-md hover:text-primary transition-colors" href="#">Contact</a></li>
+</ul>
+</div>
+<div class="space-y-6">
+<h5 class="text-xs font-semibold uppercase tracking-[0.12em] text-text-secondary/50">Stay updated</h5>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container border border-border-subtle rounded-xl px-4 py-3 text-sm text-on-surface placeholder-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all" placeholder="Your email" type="email"/>
+<button class="bg-primary-container text-white px-5 rounded-xl text-sm font-bold hover:scale-105 active:scale-95 transition-all shrink-0">Join</button>
+</div>
+<p class="text-[11px] text-text-secondary/30">No spam. Unsubscribe anytime.</p>
+</div>
+</div>
+<div class="border-t border-border-subtle px-gutter py-5">
+<div class="mx-auto flex max-w-container-max flex-col items-center justify-between gap-3 text-xs text-text-secondary/30 md:flex-row">
+<p>&copy; 2026 Talkingo. All rights reserved.</p>
+<div class="flex items-center gap-4">
+<span class="transition-colors hover:text-text-secondary/60 cursor-pointer">Privacy Policy</span>
+<span class="transition-colors hover:text-text-secondary/60 cursor-pointer">Terms of Service</span>
+</div>
+</div>
+</div>
+</footer>
+
+<script>
+        // Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Header scroll effect
+        const header = document.querySelector('header');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-xl');
+            } else {
+                header.classList.remove('shadow-xl');
+            }
+        });
+
+        // IntersectionObserver for scroll-triggered reveal animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // FAQ accordion toggle
+        function toggleFaq(button) {
+            const answer = button.nextElementSibling;
+            const icon = button.querySelector('.material-symbols-outlined');
+            const isOpen = answer.classList.contains('open');
+            
+            // Close all other FAQ items
+            document.querySelectorAll('.faq-answer.open').forEach(el => {
+                if (el !== answer) {
+                    el.classList.remove('open');
+                    const btn = el.previousElementSibling;
+                    if (btn) {
+                        const ico = btn.querySelector('.material-symbols-outlined');
+                        if (ico) ico.style.transform = 'rotate(0deg)';
+                    }
+                }
+            });
+            
+            // Toggle current
+            if (!isOpen) {
+                answer.classList.add('open');
+                if (icon) icon.style.transform = 'rotate(90deg)';
+            } else {
+                answer.classList.remove('open');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
+</body></html>

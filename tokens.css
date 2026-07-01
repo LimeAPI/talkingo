@@ -1,0 +1,173 @@
+/* Talkingo - Unified design tokens (DARK-FIRST)
+ * One system across marketing + app. Gold brand primary (from logo),
+ * Geist type, OKLCH color. Bridge variables are BARE oklch triplets so the
+ * Tailwind config's oklch(var(--x)) resolves correctly.
+ * Default (:root) = dark. .light overrides to light. auto follows OS. */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* Spacing (4pt) */
+  --space-3xs:.125rem;--space-2xs:.25rem;--space-xs:.5rem;--space-sm:.75rem;
+  --space-md:1rem;--space-lg:1.5rem;--space-xl:2.5rem;--space-2xl:4rem;--space-3xl:6rem;--space-4xl:8rem;
+  /* Radii */
+  --radius-sm:.375rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;--radius-2xl:1.25rem;--radius-3xl:1.75rem;--radius-full:9999px;
+  /* Type scale */
+  --text-xs:clamp(.7rem,.68rem+.15vw,.75rem);--text-sm:clamp(.8125rem,.78rem+.2vw,.875rem);
+  --text-base:clamp(.9375rem,.9rem+.2vw,1rem);--text-lg:clamp(1.0625rem,1rem+.4vw,1.1875rem);
+  --text-xl:clamp(1.25rem,1.1rem+.7vw,1.5rem);--text-2xl:clamp(1.5rem,1.3rem+1vw,2.125rem);
+  --text-3xl:clamp(2rem,1.6rem+2vw,3rem);--text-4xl:clamp(2.5rem,1.8rem+3vw,4rem);
+  /* Fonts */
+  --font-display:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-body:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-outlier:'Geist Mono',ui-monospace,monospace;
+  /* Motion */
+  --ease-out:cubic-bezier(.16,1,.3,1);--ease-in:cubic-bezier(.7,0,.84,0);--ease-in-out:cubic-bezier(.65,0,.35,1);
+  --ease-out-expo:cubic-bezier(.16,1,.3,1);--ease-out-back:cubic-bezier(.34,1.56,.64,1);--ease-in-out-circ:cubic-bezier(.85,0,.15,1);
+  --transition-smooth:all .3s cubic-bezier(.4,0,.2,1);--transition-bounce:all .5s cubic-bezier(.34,1.56,.64,1);
+  --transition-spring:all .4s cubic-bezier(.175,.885,.32,1.275);--transition-exit:all .2s cubic-bezier(.4,0,1,1);
+  --dur-micro:120ms;--dur-short:220ms;--dur-long:420ms;
+  /* Z */
+  --z-base:1;--z-raised:10;--z-sticky:200;--z-modal:400;--z-toast:500;
+  /* Rules */
+  --rule-hair:.5px;--rule-thin:1px;
+
+  /* ===== LIGHT (default) - warm paper + gold, matches landing ===== */
+  --color-paper:98.5% .003 95;--color-paper-2:96% .004 90;--color-paper-3:93% .005 88;
+  --color-rule:88% .006 90;--color-rule-strong:74% .008 85;
+  --color-neutral:46% .01 80;--color-muted:42% .012 80;
+  --color-ink:18% .015 70;
+  --color-accent:66% .14 80;--color-accent-dim:50% .115 72;--color-accent-glow:82% .13 88;
+  --color-focus:66% .14 80;
+  --color-secondary:58% .12 235;--color-secondary-glow:66% .12 235;
+  --color-success:55% .14 155;--color-warning:66% .15 75;--color-error:55% .19 25;--color-info:56% .13 240;
+  --color-gloss:99% .002 95;
+
+  --shadow-card:0 1px 2px oklch(20% .02 70/.05),0 2px 8px oklch(20% .02 70/.04);
+  --shadow-elevated:0 2px 4px oklch(20% .02 70/.06),0 12px 30px -10px oklch(20% .02 70/.12);
+  --shadow-gloss:inset 0 1px 0 oklch(100% 0 0/.6);
+  --shadow-sm:0 1px 2px oklch(20% .02 70/.06);
+  --shadow-md:0 6px 14px oklch(20% .02 70/.08),0 2px 4px oklch(20% .02 70/.05);
+  --shadow-lg:0 16px 32px oklch(20% .02 70/.12),0 4px 8px oklch(20% .02 70/.06);
+  --shadow-xl:0 28px 56px oklch(20% .02 70/.14),0 8px 16px oklch(20% .02 70/.08);
+  --shadow-2xl:0 40px 80px oklch(20% .02 70/.16),0 12px 24px oklch(20% .02 70/.10);
+  --font-body-weight:400;
+
+  /* Gradients (theme-agnostic, var-based) */
+  --gradient-aurora:linear-gradient(110deg,oklch(var(--color-accent-dim)) 0%,oklch(var(--color-accent)) 45%,oklch(var(--color-accent-glow)) 100%);
+  --gradient-primary:linear-gradient(135deg,oklch(var(--primary)) 0%,oklch(var(--primary-glow)) 100%);
+  --gradient-secondary:linear-gradient(135deg,oklch(var(--secondary)) 0%,oklch(var(--secondary-glow)) 100%);
+  --gradient-sunset:linear-gradient(135deg,oklch(var(--color-accent)) 0%,oklch(72% .15 55) 50%,oklch(var(--color-accent-glow)) 100%);
+  --gradient-glass:linear-gradient(135deg,oklch(100% 0 0/.05) 0%,oklch(100% 0 0/.01) 100%);
+  --gradient-shimmer:linear-gradient(90deg,transparent 0%,oklch(var(--color-accent-glow)/.18) 50%,transparent 100%);
+  --gradient-card-border:linear-gradient(135deg,oklch(var(--color-accent)/.35) 0%,oklch(var(--color-secondary)/.2) 50%,oklch(var(--color-accent)/.12) 100%);
+  --gradient-mesh:radial-gradient(at 20% 80%,oklch(var(--color-accent)/.1) 0%,transparent 50%),radial-gradient(at 80% 20%,oklch(var(--color-secondary)/.07) 0%,transparent 50%),radial-gradient(at 50% 50%,oklch(var(--color-accent)/.05) 0%,transparent 55%);
+
+  /* shadcn bridge - BARE oklch triplets, var-based so they swap with theme */
+  --background:var(--color-paper);--foreground:var(--color-ink);
+  --card:var(--color-paper-2);--card-foreground:var(--color-ink);--card-elevated:var(--color-paper-3);
+  --popover:var(--color-paper-3);--popover-foreground:var(--color-ink);
+  --primary:var(--color-accent);--primary-foreground:18% .02 75;--primary-glow:var(--color-accent-glow);--primary-subtle:var(--color-paper-3);
+  --secondary:var(--color-secondary);--secondary-foreground:18% .02 75;--secondary-glow:var(--color-secondary-glow);
+  --accent:var(--color-accent);--accent-foreground:18% .02 75;--accent-glow:var(--color-accent-glow);
+  --muted:var(--color-paper-2);--muted-foreground:var(--color-muted);
+  --border:var(--color-rule);--input:var(--color-paper-2);--ring:var(--color-focus);
+  --correction:var(--color-warning);--correction-soft:var(--color-warning);--correction-bg:var(--color-paper-2);
+  --success:var(--color-success);--success-foreground:100% 0 0;
+  --warning:var(--color-warning);--error:var(--color-error);--info:var(--color-info);
+  --radius:var(--radius-md);
+  --font-sans:var(--font-body);--font-display:var(--font-display);--font-mono:var(--font-outlier);
+}
+
+/* ===== LIGHT palette (shared by explicit .light and OS-light on auto) ===== */
+.light,
+.theme-light {
+  --color-paper:98.5% .003 95;--color-paper-2:96% .004 90;--color-paper-3:93% .005 88;
+  --color-rule:88% .006 90;--color-rule-strong:74% .008 85;
+  --color-neutral:46% .01 80;--color-muted:42% .012 80;
+  --color-ink:18% .015 70;
+  --color-accent:66% .14 80;--color-accent-dim:50% .115 72;--color-accent-glow:82% .13 88;
+  --color-focus:66% .14 80;
+  --color-secondary:58% .12 235;--color-secondary-glow:66% .12 235;
+  --color-success:55% .14 155;--color-warning:66% .15 75;--color-error:55% .19 25;--color-info:56% .13 240;
+  --color-gloss:99% .002 95;
+  --shadow-card:0 1px 2px oklch(20% .02 70/.05),0 2px 8px oklch(20% .02 70/.04);
+  --shadow-elevated:0 2px 4px oklch(20% .02 70/.06),0 12px 30px -10px oklch(20% .02 70/.12);
+  --shadow-gloss:inset 0 1px 0 oklch(100% 0 0/.6);
+  --shadow-sm:0 1px 2px oklch(20% .02 70/.06);
+  --shadow-md:0 6px 14px oklch(20% .02 70/.08),0 2px 4px oklch(20% .02 70/.05);
+  --shadow-lg:0 16px 32px oklch(20% .02 70/.12),0 4px 8px oklch(20% .02 70/.06);
+  --shadow-xl:0 28px 56px oklch(20% .02 70/.14),0 8px 16px oklch(20% .02 70/.08);
+  --shadow-2xl:0 40px 80px oklch(20% .02 70/.16),0 12px 24px oklch(20% .02 70/.10);
+  --font-body-weight:400;
+}
+
+/* auto: follow OS when no explicit theme class is set (default is light, OS-dark opts into dark) */
+@media (prefers-color-scheme: dark) {
+  :root:not(.dark):not(.light) {
+    --color-paper:16% .012 74;--color-paper-2:20% .014 72;--color-paper-3:25% .016 70;
+    --color-rule:30% .015 72;--color-rule-strong:44% .02 72;
+    --color-neutral:62% .012 80;--color-muted:70% .012 82;
+    --color-ink:95% .008 85;
+    --color-accent:78% .145 82;--color-accent-dim:68% .14 80;--color-accent-glow:88% .12 90;
+    --color-focus:78% .145 82;
+    --color-secondary:72% .12 235;--color-secondary-glow:78% .12 235;
+    --color-success:68% .14 155;--color-warning:76% .14 78;--color-error:65% .19 25;--color-info:68% .12 240;
+    --color-gloss:22% .01 75;
+    --shadow-card:0 1px 2px oklch(0% 0 0/.4),0 2px 8px oklch(0% 0 0/.3);
+    --shadow-elevated:0 2px 4px oklch(0% 0 0/.45),0 16px 36px -10px oklch(0% 0 0/.5);
+    --shadow-sm:0 1px 2px oklch(0% 0 0/.5);
+    --shadow-md:0 6px 14px oklch(0% 0 0/.55),0 2px 4px oklch(0% 0 0/.4);
+    --shadow-lg:0 16px 32px oklch(0% 0 0/.6),0 4px 8px oklch(0% 0 0/.4);
+    --shadow-xl:0 28px 56px oklch(0% 0 0/.65),0 8px 16px oklch(0% 0 0/.45);
+    --shadow-2xl:0 40px 80px oklch(0% 0 0/.75),0 12px 24px oklch(0% 0 0/.5);
+    --font-body-weight:350;
+  }
+}
+
+/* .dark is identical to :root default - explicit override wins over OS-light */
+.dark {
+  --color-paper:16% .012 74;--color-paper-2:20% .014 72;--color-paper-3:25% .016 70;
+  --color-rule:30% .015 72;--color-rule-strong:44% .02 72;
+  --color-neutral:62% .012 80;--color-muted:70% .012 82;
+  --color-ink:95% .008 85;
+  --color-accent:78% .145 82;--color-accent-dim:68% .14 80;--color-accent-glow:88% .12 90;
+  --color-focus:78% .145 82;
+  --color-secondary:72% .12 235;--color-secondary-glow:78% .12 235;
+  --color-success:68% .14 155;--color-warning:76% .14 78;--color-error:65% .19 25;--color-info:68% .12 240;
+  --color-gloss:22% .01 75;
+  --shadow-card:0 1px 2px oklch(0% 0 0/.4),0 2px 8px oklch(0% 0 0/.3);
+  --shadow-elevated:0 2px 4px oklch(0% 0 0/.45),0 16px 36px -10px oklch(0% 0 0/.5);
+  --shadow-sm:0 1px 2px oklch(0% 0 0/.5);
+  --shadow-md:0 6px 14px oklch(0% 0 0/.55),0 2px 4px oklch(0% 0 0/.4);
+  --shadow-lg:0 16px 32px oklch(0% 0 0/.6),0 4px 8px oklch(0% 0 0/.4);
+  --shadow-xl:0 28px 56px oklch(0% 0 0/.65),0 8px 16px oklch(0% 0 0/.45);
+  --shadow-2xl:0 40px 80px oklch(0% 0 0/.75),0 12px 24px oklch(0% 0 0/.5);
+  --font-body-weight:350;
+}
+
+/* ===== LANDING - always-light marketing scope ===== */
+.lp {
+  --color-paper:98.5% .002 250;--color-paper-2:95% .003 250;--color-paper-3:90% .004 248;
+  --color-rule:86% .004 250;--color-rule-strong:72% .004 248;
+  --color-neutral:48% .005 252;--color-muted:38% .006 255;--color-ink:14% .005 260;
+  --color-accent:64% .135 78;--color-accent-dim:49% .115 68;--color-accent-glow:82% .14 88;
+  --color-focus:64% .135 78;
+  --lp-glow-a:84% .13 88;--lp-glow-b:72% .15 70;
+  --lp-ink-paper:16% .012 70;--lp-ink-paper-2:20% .014 68;--lp-ink-rule:34% .02 72;
+  --lp-ink-fg:95% .01 80;--lp-ink-muted:72% .015 78;
+}
+
+.lp-dark {
+  --color-paper:var(--lp-ink-paper);
+  --color-paper-2:var(--lp-ink-paper-2);
+  --color-paper-3:24% .016 66;
+  --color-rule:var(--lp-ink-rule);
+  --color-rule-strong:46% .02 72;
+  --color-ink:var(--lp-ink-fg);
+  --color-muted:var(--lp-ink-muted);
+  --color-accent:80% .135 84;
+  --color-accent-dim:72% .14 80;
+  background:oklch(var(--lp-ink-paper));
+  color:oklch(var(--lp-ink-fg));
+}

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talkingo — Papercut Studio</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#F7F2EC',
+            surface: '#FFFDF9',
+            'surface-2': '#F5EFE8',
+            'surface-3': '#EDE6DD',
+            primary: '#D4734C',
+            'primary-light': '#E8A88A',
+            secondary: '#6B8E6E',
+            'secondary-light': '#A8C4AA',
+            accent: '#C9A66B',
+            text: '#2C2420',
+            'text-2': '#8C7E74',
+            'text-3': '#BDB0A4',
+            border: '#E0D5CB',
+          },
+          fontFamily: {
+            sans: ['Nunito', 'sans-serif'],
+            display: ['DM Serif Display', 'serif'],
+          },
+          borderRadius: {
+            'sm': '4px',
+            'md': '8px',
+            'lg': '12px',
+            'xl': '16px',
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: #F7F2EC;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4734C' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .font-display { font-family: 'DM Serif Display', serif; }
+    .paper-shadow {
+      box-shadow:
+        0 1px 1px rgba(0,0,0,0.05),
+        0 2px 2px rgba(0,0,0,0.05),
+        0 4px 4px rgba(0,0,0,0.05),
+        0 8px 8px rgba(0,0,0,0.03);
+    }
+    .paper-tape {
+      position: relative;
+    }
+    .paper-tape::before {
+      content: '';
+      position: absolute;
+      top: -8px; left: 50%;
+      transform: translateX(-50%) rotate(-2deg);
+      width: 60px; height: 20px;
+      background: rgba(201, 166, 107, 0.4);
+      border: 1px dashed rgba(201, 166, 107, 0.3);
+    }
+    .sticker {
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.1);
+      transform: rotate(-1deg);
+    }
+    .sticker-2 { transform: rotate(1.5deg); }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: #D4734C;
+      border: 3px solid #FFFDF9;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      cursor: pointer;
+      margin-top: -9px;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%; height: 4px;
+      background: #E0D5CB;
+      border-radius: 2px;
+    }
+    .washi-edge {
+      position: relative;
+    }
+    .washi-edge::after {
+      content: '';
+      position: absolute;
+      bottom: -6px; left: 0; right: 0;
+      height: 12px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 10'%3E%3Cpath d='M0 5 Q5 0 10 5 T20 5' fill='none' stroke='%23D4734C' stroke-width='0.5' opacity='0.2'/%3E%3C/svg%3E") repeat-x;
+      background-size: 20px 10px;
+    }
+  </style>
+</head>
+<body class="text-text antialiased min-h-[100dvh] pb-28">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-bg/95 backdrop-blur-sm border-b border-border">
+    <div class="max-w-lg mx-auto flex items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-primary rounded-sm flex items-center justify-center text-white font-display text-lg">T</div>
+        <span class="font-display text-xl tracking-tight">Talkingo</span>
+      </div>
+      <button class="w-9 h-9 flex items-center justify-center text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">notifications</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-lg mx-auto px-6 pt-8 space-y-8">
+
+    <!-- Profile Card with Tape -->
+    <section class="paper-tape paper-shadow bg-surface p-6 washi-edge">
+      <div class="flex items-start gap-4">
+        <img src="https://i.pravatar.cc/150?img=12" class="w-16 h-16 rounded-sm object-cover border-2 border-border" alt="Alex" />
+        <div class="flex-1">
+          <h1 class="font-display text-2xl text-text">Alex</h1>
+          <p class="text-text-2 text-sm mt-1">alex.learner@example.com</p>
+          <div class="sticker inline-block mt-3 px-3 py-1 bg-secondary-light text-secondary text-xs font-bold rounded-sm">
+            7 day streak
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats as Sticky Notes -->
+    <div class="grid grid-cols-3 gap-4">
+      <div class="sticker sticker-2 bg-accent/20 p-4 text-center paper-shadow">
+        <p class="font-display text-2xl text-text">7</p>
+        <p class="text-text-2 text-[11px] font-semibold mt-1 uppercase tracking-wider">Days</p>
+      </div>
+      <div class="sticker bg-surface-2 p-4 text-center paper-shadow">
+        <p class="font-display text-2xl text-text">24</p>
+        <p class="text-text-2 text-[11px] font-semibold mt-1 uppercase tracking-wider">Chats</p>
+      </div>
+      <div class="sticker sticker-2 bg-primary/10 p-4 text-center paper-shadow">
+        <p class="font-display text-2xl text-text">3.2h</p>
+        <p class="text-text-2 text-[11px] font-semibold mt-1 uppercase tracking-wider">Time</p>
+      </div>
+    </div>
+
+    <!-- Learning Section -->
+    <section class="paper-shadow bg-surface p-6 relative">
+      <div class="absolute top-0 left-6 w-1 h-full bg-primary/20"></div>
+      <h2 class="font-display text-xl mb-5 ml-3">Learning Path</h2>
+
+      <div class="ml-3 space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-surface-2 border border-border flex items-center justify-center text-lg">🇪🇸</div>
+          <div>
+            <p class="font-semibold text-sm">Spanish</p>
+            <p class="text-text-2 text-xs">Target language</p>
+          </div>
+          <span class="ml-auto px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-sm">B1</span>
+        </div>
+
+        <div class="pl-11">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-2 h-2 rounded-full bg-secondary"></div>
+            <span class="text-xs text-text-2">Progress</span>
+          </div>
+          <div class="h-2 bg-surface-3 rounded-sm overflow-hidden">
+            <div class="h-full w-1/2 bg-gradient-to-r from-secondary to-secondary-light rounded-sm"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-text-3 mt-1">
+            <span>A1</span><span>A2</span><span class="text-primary font-bold">B1</span><span>B2</span><span>C1</span><span>C2</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Audio Controls -->
+    <section class="paper-shadow bg-surface p-6">
+      <h2 class="font-display text-xl mb-5">Audio Settings</h2>
+      <div class="space-y-5">
+        <div>
+          <div class="flex justify-between mb-2">
+            <label class="text-sm font-semibold text-text">Voice Speed</label>
+            <span class="text-sm font-bold text-primary">1.0x</span>
+          </div>
+          <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full" />
+        </div>
+        <div class="flex items-center justify-between pt-4 border-t border-dashed border-border">
+          <div>
+            <p class="text-sm font-semibold">Auto-play audio</p>
+            <p class="text-xs text-text-2">Speak responses automatically</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" checked class="sr-only peer" />
+            <div class="w-11 h-6 bg-surface-3 rounded-full peer-checked:bg-secondary transition-colors">
+              <div class="absolute top-[2px] left-[2px] w-5 h-5 bg-surface border border-border rounded-full transition-transform peer-checked:translate-x-5"></div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Partners as Photo Polaroids -->
+    <section class="paper-shadow bg-surface p-6">
+      <h2 class="font-display text-xl mb-5">Your Partner</h2>
+      <div class="flex gap-4">
+        <div class="sticker p-3 bg-surface-2 paper-shadow text-center">
+          <img src="https://i.pravatar.cc/150?img=5" class="w-16 h-16 object-cover border border-border mb-2" alt="Elena" />
+          <p class="font-semibold text-sm">Elena</p>
+          <p class="text-[10px] text-text-2">Spain</p>
+          <div class="mt-1 w-2 h-2 bg-secondary rounded-full mx-auto"></div>
+        </div>
+        <div class="sticker sticker-2 p-3 bg-surface-2 paper-shadow text-center opacity-50">
+          <img src="https://i.pravatar.cc/150?img=9" class="w-16 h-16 object-cover border border-border mb-2 grayscale" alt="Marcos" />
+          <p class="font-semibold text-sm text-text-2">Marcos</p>
+          <p class="text-[10px] text-text-3">Mexico</p>
+          <span class="mt-1 inline-block text-[10px] text-text-3 border border-text-3 px-1 rounded-sm">Locked</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Premium Badge -->
+    <section class="paper-shadow bg-surface p-5 flex items-center gap-4">
+      <div class="sticker w-12 h-12 bg-primary/10 flex items-center justify-center">
+        <span class="material-symbols-outlined text-primary">workspace_premium</span>
+      </div>
+      <div class="flex-1">
+        <h3 class="font-display text-lg">Premium Member</h3>
+        <p class="text-text-2 text-sm">Unlimited conversations</p>
+      </div>
+      <button class="px-4 py-2 bg-primary text-white text-sm font-bold rounded-sm hover:bg-primary/90 transition-colors">
+        Manage
+      </button>
+    </section>
+
+    <!-- Sign Out -->
+    <button class="w-full py-3 text-text-2 text-sm font-semibold hover:text-primary transition-colors border-t border-dashed border-border">
+      Sign Out
+    </button>
+
+  </main>
+
+  <!-- Bottom Nav - Sketchbook Tabs -->
+  <nav class="fixed bottom-0 left-0 right-0 z-50 bg-bg border-t border-border">
+    <div class="max-w-lg mx-auto flex items-center justify-around px-4 py-1">
+      <a href="#" class="flex flex-col items-center py-3 px-4 text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">chat_bubble</span>
+        <span class="text-[10px] font-semibold mt-1">Chat</span>
+      </a>
+      <a href="#" class="flex flex-col items-center py-3 px-4 text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">auto_stories</span>
+        <span class="text-[10px] font-semibold mt-1">Learn</span>
+      </a>
+      <a href="#" class="flex flex-col items-center py-3 px-4 text-text relative -mt-4">
+        <div class="w-14 h-14 bg-primary rounded-full flex items-center justify-center paper-shadow">
+          <span class="material-symbols-outlined text-white text-2xl">person</span>
+        </div>
+        <span class="text-[10px] font-semibold mt-1">Profile</span>
+      </a>
+      <a href="#" class="flex flex-col items-center py-3 px-4 text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">history</span>
+        <span class="text-[10px] font-semibold mt-1">History</span>
+      </a>
+      <a href="#" class="flex flex-col items-center py-3 px-4 text-text-2 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="text-[10px] font-semibold mt-1">Settings</span>
+      </a>
+    </div>
+  </nav>
+
+</body>
+</html>

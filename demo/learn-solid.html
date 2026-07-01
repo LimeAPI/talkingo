@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talkingo — Clean Learn</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#F2F2F7',
+            surface: '#FFFFFF',
+            'surface-2': '#F7F7F9',
+            primary: '#FF6A45',
+            'primary-soft': '#FFF0EC',
+            text: '#1C1C1E',
+            'text-2': '#8E8E93',
+            'text-3': '#C7C7CC',
+            border: '#E5E5EA',
+            success: '#34C759',
+            'success-soft': '#E8F9EE',
+            lavender: '#AF52DE',
+            blue: '#007AFF',
+            orange: '#FF9500',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Manrope', 'sans-serif'],
+          },
+          borderRadius: {
+            '2xl': '1rem',
+            '3xl': '1.25rem',
+            '4xl': '1.5rem',
+            '5xl': '2rem',
+          },
+          boxShadow: {
+            'card': '0 1px 3px rgba(0,0,0,0.04), 0 4px 20px rgba(0,0,0,0.06)',
+            'card-hover': '0 4px 12px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.08)',
+            'float': '0 8px 30px rgba(0,0,0,0.12)',
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #F2F2F7; }
+    .font-display { font-family: 'Manrope', sans-serif; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="text-text antialiased min-h-[100dvh] pb-28">
+
+  <header class="sticky top-0 z-40 bg-bg/80 backdrop-blur-xl">
+    <div class="max-w-lg mx-auto flex items-center justify-between px-5 py-3">
+      <div class="flex items-center gap-3">
+        <img src="https://i.pravatar.cc/150?img=12" class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm" alt="Avatar" />
+        <h1 class="font-display font-bold text-lg">Hola, Alex</h1>
+      </div>
+      <button class="w-10 h-10 rounded-full bg-surface shadow-card flex items-center justify-center">
+        <span class="material-symbols-outlined text-text-2">notifications</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-lg mx-auto px-5 pt-6 space-y-6">
+
+    <!-- Search -->
+    <div class="relative">
+      <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-text-2">search</span>
+      <input type="text" placeholder="Find a scenario or grammar topic..."
+        class="w-full bg-surface rounded-3xl py-3.5 pl-12 pr-4 text-sm font-medium placeholder:text-text-2 shadow-card focus:outline-none focus:ring-2 focus:ring-primary/20" />
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 p-1 bg-surface rounded-2xl shadow-card w-fit mx-auto">
+      <button class="px-6 py-2.5 rounded-xl bg-text text-white text-sm font-semibold shadow-sm">Scenarios</button>
+      <button class="px-6 py-2.5 rounded-xl text-text-2 text-sm font-medium hover:text-text transition-colors">Grammar</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex overflow-x-auto gap-2 hide-scrollbar pb-1">
+      <button class="shrink-0 px-4 py-2 rounded-full bg-text text-white text-xs font-semibold">All</button>
+      <button class="shrink-0 px-4 py-2 rounded-full bg-surface text-text-2 text-xs font-medium shadow-card border border-border">A1 Beginner</button>
+      <button class="shrink-0 px-4 py-2 rounded-full bg-surface text-text-2 text-xs font-medium shadow-card border border-border">A2 Elementary</button>
+      <button class="shrink-0 px-4 py-2 rounded-full bg-surface text-text-2 text-xs font-medium shadow-card border border-border">B1 Intermediate</button>
+      <button class="shrink-0 px-4 py-2 rounded-full bg-surface text-text-2 text-xs font-medium shadow-card border border-border">B2 Upper Int.</button>
+      <button class="shrink-0 px-4 py-2 rounded-full bg-surface text-text-2 text-xs font-medium shadow-card border border-border">C1 Advanced</button>
+    </div>
+
+    <!-- Cards -->
+    <div class="grid grid-cols-1 gap-4 pb-6">
+
+      <!-- Card 1 -->
+      <div class="bg-surface rounded-4xl shadow-card p-6 hover:shadow-card-hover transition-shadow cursor-pointer group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="w-12 h-12 rounded-2xl bg-blue/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-blue">local_cafe</span>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-success-soft text-success text-xs font-bold">A1</span>
+        </div>
+        <h3 class="font-display font-bold text-lg mb-1">Ordering Coffee</h3>
+        <p class="text-text-2 text-sm leading-relaxed">Master the basics of requesting your morning brew, handling payments, and polite greetings.</p>
+        <div class="flex items-center justify-between mt-5 pt-4 border-t border-border">
+          <div class="flex items-center gap-1.5 text-text-2 text-xs">
+            <span class="material-symbols-outlined text-[16px]">schedule</span>
+            5 mins
+          </div>
+          <button class="flex items-center gap-1 text-primary text-xs font-semibold group-hover:gap-2 transition-all">
+            Start <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="bg-surface rounded-4xl shadow-card p-6 hover:shadow-card-hover transition-shadow cursor-pointer group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="w-12 h-12 rounded-2xl bg-lavender/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-lavender">work</span>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-lavender/10 text-lavender text-xs font-bold">B2</span>
+        </div>
+        <h3 class="font-display font-bold text-lg mb-1">Business Meeting</h3>
+        <p class="text-text-2 text-sm leading-relaxed">Navigate complex professional discussions, express opinions politely, and negotiate terms.</p>
+        <div class="flex items-center justify-between mt-5 pt-4 border-t border-border">
+          <div class="flex items-center gap-1.5 text-text-2 text-xs">
+            <span class="material-symbols-outlined text-[16px]">schedule</span>
+            15 mins
+          </div>
+          <button class="flex items-center gap-1 text-primary text-xs font-semibold group-hover:gap-2 transition-all">
+            Start <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="bg-surface rounded-4xl shadow-card p-6 hover:shadow-card-hover transition-shadow cursor-pointer group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="w-12 h-12 rounded-2xl bg-orange/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-orange">restaurant</span>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-orange/10 text-orange text-xs font-bold">B1</span>
+        </div>
+        <h3 class="font-display font-bold text-lg mb-1">Street Food in Mexico</h3>
+        <p class="text-text-2 text-sm leading-relaxed">Ask about ingredients, request modifications, and express enjoyment of local cuisine.</p>
+        <div class="flex items-center justify-between mt-5 pt-4 border-t border-border">
+          <div class="flex items-center gap-1.5 text-text-2 text-xs">
+            <span class="material-symbols-outlined text-[16px]">schedule</span>
+            10 mins
+          </div>
+          <button class="flex items-center gap-1 text-primary text-xs font-semibold group-hover:gap-2 transition-all">
+            Start <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="bg-surface rounded-4xl shadow-card p-6 hover:shadow-card-hover transition-shadow cursor-pointer group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="w-12 h-12 rounded-2xl bg-primary-soft flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary">flight_takeoff</span>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-primary-soft text-primary text-xs font-bold">A2</span>
+        </div>
+        <h3 class="font-display font-bold text-lg mb-1">Airport Security</h3>
+        <p class="text-text-2 text-sm leading-relaxed">Understand common instructions from security personnel and explain items in your luggage.</p>
+        <div class="flex items-center justify-between mt-5 pt-4 border-t border-border">
+          <div class="flex items-center gap-1.5 text-text-2 text-xs">
+            <span class="material-symbols-outlined text-[16px]">schedule</span>
+            8 mins
+          </div>
+          <button class="flex items-center gap-1 text-primary text-xs font-semibold group-hover:gap-2 transition-all">
+            Start <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-surface rounded-full shadow-float px-2 py-2">
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined text-xl">chat_bubble</span>
+    </a>
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full bg-text text-white shadow-sm">
+      <span class="material-symbols-outlined text-xl">auto_stories</span>
+    </a>
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined text-xl">person</span>
+    </a>
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined text-xl">history</span>
+    </a>
+    <a href="#" class="flex flex-col items-center justify-center w-14 h-14 rounded-full text-text-2 hover:bg-surface-2 transition-colors">
+      <span class="material-symbols-outlined text-xl">settings</span>
+    </a>
+  </nav>
+
+</body>
+</html>
